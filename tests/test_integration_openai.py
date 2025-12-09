@@ -16,11 +16,14 @@ from llm_qualitative_sort.events import EventType, ProgressEvent
 from llm_qualitative_sort.models import SortResult, ComparisonResult
 
 
-# Skip all tests in this module if OPENAI_API_KEY is not set
-pytestmark = pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY"),
-    reason="OPENAI_API_KEY environment variable not set"
-)
+# Mark all tests as integration tests and skip if OPENAI_API_KEY is not set
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY"),
+        reason="OPENAI_API_KEY environment variable not set"
+    ),
+]
 
 
 @pytest.fixture
