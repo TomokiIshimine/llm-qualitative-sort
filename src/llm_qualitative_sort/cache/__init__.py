@@ -48,8 +48,14 @@ class Cache(ABC):
         criteria: str,
         order: str
     ) -> str:
-        """Create cache key from components."""
-        return f"{hash(item_a)}:{hash(item_b)}:{hash(criteria)}:{order}"
+        """Create deterministic cache key from components.
+
+        Uses SHA256 for deterministic hashing that persists across Python sessions.
+        Python's built-in hash() is randomized per process and should not be used
+        for persistent cache keys.
+        """
+        key_str = f"{item_a}:{item_b}:{criteria}:{order}"
+        return hashlib.sha256(key_str.encode()).hexdigest()[:32]
 
 
 class MemoryCache(Cache):

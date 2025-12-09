@@ -68,7 +68,12 @@ class QualitativeSorter:
 
         Returns:
             SortResult with rankings, match history, and statistics
+
+        Raises:
+            ValueError: If items list is empty or contains invalid items
+            TypeError: If items is not a list or contains non-string items
         """
+        self._validate_items(items)
         start_time = time.time()
         self._total_api_calls = 0
         self._cache_hits = 0
@@ -175,17 +180,13 @@ class QualitativeSorter:
             result, cached = await self._compare_with_cache(first, second, order)
 
             # Translate winner back to original A/B
-            if result.winner == "A":
-                actual_winner = "A" if order == "AB" else "B"
-            elif result.winner == "B":
-                actual_winner = "B" if order == "AB" else "A"
-            else:
-                actual_winner = "A"  # Default on error
+            actual_winner = self._translate_winner(result.winner, order)
 
             if actual_winner == "A":
                 a_wins += 1
-            else:
+            elif actual_winner == "B":
                 b_wins += 1
+            # If actual_winner is None (error/draw), neither gets a win
 
             rounds.append(RoundResult(
                 order=order,
@@ -237,6 +238,44 @@ class QualitativeSorter:
             await self.cache.set(item_a, item_b, self.criteria, order, result)
 
         return result, False
+
+    def _validate_items(self, items: list[str]) -> None:
+        """Validate input items for sorting.
+
+        Args:
+            items: List of items to validate
+
+        Raises:
+            TypeError: If items is not a list or contains non-string items
+            ValueError: If items list is empty or has fewer than 2 items
+        """
+        if not isinstance(items, list):
+            raise TypeError("items must be a list")
+
+        if len(items) < 2:
+            raise ValueError("items must contain at least 2 items to sort")
+
+        for i, item in enumerate(items):
+            if not isinstance(item, str):
+                raise TypeError(f"Item at index {i} is not a string: {type(item).__name__}")
+
+    def _translate_winner(self, winner: str | None, order: str) -> str | None:
+        """Translate winner from presentation order to original item order.
+
+        Args:
+            winner: The winner as reported ("A", "B", or None)
+            order: The presentation order ("AB" or "BA")
+
+        Returns:
+            The winner translated to original order, or None if winner is invalid/None.
+        """
+        if winner not in ("A", "B"):
+            return None
+
+        if order == "AB":
+            return winner
+        # order == "BA": swap A and B
+        return "B" if winner == "A" else "A"
 
     def _emit_progress(
         self,

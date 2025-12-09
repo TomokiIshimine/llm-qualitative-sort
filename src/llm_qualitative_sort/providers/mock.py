@@ -6,6 +6,13 @@ from llm_qualitative_sort.providers.base import LLMProvider
 from llm_qualitative_sort.models import ComparisonResult
 
 
+# Default noise standard deviation for mock comparisons.
+# Value of 3.33 provides ~±10 range within 3 standard deviations (99.7% confidence),
+# simulating reasonable uncertainty in qualitative comparisons while maintaining
+# general correctness for items with large value differences.
+DEFAULT_MOCK_NOISE_STDDEV = 3.33
+
+
 class MockLLMProvider(LLMProvider):
     """Mock LLM provider for testing.
 
@@ -14,13 +21,13 @@ class MockLLMProvider(LLMProvider):
 
     Attributes:
         seed: Random seed for reproducibility
-        noise_stddev: Standard deviation of Gaussian noise (default: 3.33)
+        noise_stddev: Standard deviation of Gaussian noise
     """
 
     def __init__(
         self,
         seed: int | None = None,
-        noise_stddev: float = 3.33
+        noise_stddev: float = DEFAULT_MOCK_NOISE_STDDEV
     ):
         super().__init__(api_key="mock", base_url=None, model="mock")
         self.seed = seed
