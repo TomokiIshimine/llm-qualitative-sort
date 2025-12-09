@@ -28,7 +28,7 @@ class OpenAIProviderSync(LLMProvider):
     """
 
     DEFAULT_BASE_URL = "https://api.openai.com/v1"
-    DEFAULT_MODEL = "gpt-4o-mini"
+    DEFAULT_MODEL = "gpt-5-mini"
 
     def __init__(
         self,
@@ -147,7 +147,7 @@ async def test_basic_sorting():
 
     provider = OpenAIProviderSync(
         api_key=api_key,
-        model="gpt-4o-mini"
+        model="gpt-5-mini"
     )
 
     cache = MemoryCache()
@@ -204,7 +204,7 @@ async def test_numeric_sorting():
 
     provider = OpenAIProviderSync(
         api_key=api_key,
-        model="gpt-4o-mini"
+        model="gpt-5-mini"
     )
 
     sorter = QualitativeSorter(
@@ -256,7 +256,7 @@ async def test_character_strength():
 
     provider = OpenAIProviderSync(
         api_key=api_key,
-        model="gpt-4o-mini"
+        model="gpt-5-mini"
     )
 
     sorter = QualitativeSorter(
@@ -300,7 +300,7 @@ async def main():
     """メイン関数"""
     print("🚀 GPT統合テスト開始")
     print("=" * 60)
-    print(f"使用モデル: gpt-4o-mini")
+    print(f"使用モデル: gpt-5-mini")
     print("=" * 60)
 
     success = True
