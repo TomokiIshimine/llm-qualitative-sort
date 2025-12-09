@@ -3,6 +3,7 @@
 import random
 
 from llm_qualitative_sort.providers.base import LLMProvider
+from llm_qualitative_sort.providers.errors import create_error_result
 from llm_qualitative_sort.models import ComparisonResult
 
 
@@ -62,8 +63,4 @@ class MockLLMProvider(LLMProvider):
                 }
             )
         except ValueError as e:
-            return ComparisonResult(
-                winner=None,
-                reasoning=f"Failed to parse items as integers: {e}",
-                raw_response={"error": str(e)}
-            )
+            return create_error_result(e, "parse", "Failed to parse items as integers")
