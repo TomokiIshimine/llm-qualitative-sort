@@ -18,8 +18,8 @@ class LLMProvider(ABC):
         self,
         api_key: str,
         base_url: str | None = None,
-        model: str = "default"
-    ):
+        model: str = "default",
+    ) -> None:
         self.api_key = api_key
         self.base_url = base_url
         self.model = model

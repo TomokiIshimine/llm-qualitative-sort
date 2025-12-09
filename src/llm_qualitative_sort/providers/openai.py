@@ -3,6 +3,7 @@
 from openai import AsyncOpenAI, APIError, APIConnectionError, RateLimitError, APITimeoutError
 
 from llm_qualitative_sort.providers.base import LLMProvider
+from llm_qualitative_sort.providers.errors import create_error_result
 from llm_qualitative_sort.models import ComparisonResult, ComparisonResponse
 
 
@@ -22,7 +23,7 @@ class OpenAIProvider(LLMProvider):
         base_url: str | None = None,
         model: str | None = None,
         temperature: float | None = 0,
-    ):
+    ) -> None:
         super().__init__(
             api_key=api_key,
             base_url=base_url or self.DEFAULT_BASE_URL,
@@ -81,26 +82,10 @@ class OpenAIProvider(LLMProvider):
             )
 
         except RateLimitError as e:
-            return ComparisonResult(
-                winner=None,
-                reasoning=f"Rate limit exceeded: {e}",
-                raw_response={"error": str(e), "error_type": "rate_limit"}
-            )
+            return create_error_result(e, "rate_limit", "Rate limit exceeded")
         except APITimeoutError as e:
-            return ComparisonResult(
-                winner=None,
-                reasoning=f"Request timeout: {e}",
-                raw_response={"error": str(e), "error_type": "timeout"}
-            )
+            return create_error_result(e, "timeout", "Request timeout")
         except APIConnectionError as e:
-            return ComparisonResult(
-                winner=None,
-                reasoning=f"Connection error: {e}",
-                raw_response={"error": str(e), "error_type": "connection"}
-            )
+            return create_error_result(e, "connection", "Connection error")
         except APIError as e:
-            return ComparisonResult(
-                winner=None,
-                reasoning=f"API error: {e}",
-                raw_response={"error": str(e), "error_type": "api"}
-            )
+            return create_error_result(e, "api", "API error")
