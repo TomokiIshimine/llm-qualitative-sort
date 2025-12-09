@@ -38,8 +38,8 @@ class MultiEliminationTournament:
         self,
         items: list[str],
         elimination_count: int = 2,
-        seed: int | None = None
-    ):
+        seed: int | None = None,
+    ) -> None:
         self.elimination_count = elimination_count
         self._rng = random.Random(seed)
 

@@ -2,10 +2,13 @@
 
 import json
 import hashlib
+import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
 
 from llm_qualitative_sort.models import ComparisonResult
+
+logger = logging.getLogger(__name__)
 
 
 class Cache(ABC):
@@ -65,7 +68,7 @@ class MemoryCache(Cache):
     Not persistent across runs.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._cache: dict[str, ComparisonResult] = {}
 
     async def get(
@@ -99,7 +102,7 @@ class FileCache(Cache):
     Persistent across runs.
     """
 
-    def __init__(self, cache_dir: str):
+    def __init__(self, cache_dir: str) -> None:
         self._cache_dir = Path(cache_dir)
         self._cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -124,7 +127,12 @@ class FileCache(Cache):
                     reasoning=data["reasoning"],
                     raw_response=data["raw_response"]
                 )
-        except (json.JSONDecodeError, KeyError):
+        except (json.JSONDecodeError, KeyError) as e:
+            logger.warning(
+                "Failed to load cache file %s: %s",
+                cache_file,
+                e
+            )
             return None
 
     async def set(
@@ -155,8 +163,7 @@ class FileCache(Cache):
         order: str
     ) -> Path:
         """Get cache file path for given parameters."""
-        key = f"{item_a}:{item_b}:{criteria}:{order}"
-        hash_key = hashlib.sha256(key.encode()).hexdigest()[:16]
+        hash_key = self._make_key(item_a, item_b, criteria, order)[:16]
         return self._cache_dir / f"{hash_key}.json"
 
 

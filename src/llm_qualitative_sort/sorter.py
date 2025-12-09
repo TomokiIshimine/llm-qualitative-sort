@@ -43,7 +43,7 @@ class QualitativeSorter:
         cache: Cache | None = None,
         on_progress: Callable[[ProgressEvent], None] | None = None,
         seed: int | None = None,
-    ):
+    ) -> None:
         if comparison_rounds % 2 != 0:
             raise ValueError("comparison_rounds must be even")
 

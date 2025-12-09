@@ -27,8 +27,8 @@ class MockLLMProvider(LLMProvider):
     def __init__(
         self,
         seed: int | None = None,
-        noise_stddev: float = DEFAULT_MOCK_NOISE_STDDEV
-    ):
+        noise_stddev: float = DEFAULT_MOCK_NOISE_STDDEV,
+    ) -> None:
         super().__init__(api_key="mock", base_url=None, model="mock")
         self.seed = seed
         self.noise_stddev = noise_stddev

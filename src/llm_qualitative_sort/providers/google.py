@@ -5,6 +5,7 @@ from google.genai import types
 from google.genai.errors import ClientError, ServerError
 
 from llm_qualitative_sort.providers.base import LLMProvider
+from llm_qualitative_sort.providers.errors import create_error_result
 from llm_qualitative_sort.models import ComparisonResult, ComparisonResponse
 
 
@@ -22,8 +23,8 @@ class GoogleProvider(LLMProvider):
         self,
         api_key: str,
         base_url: str | None = None,
-        model: str | None = None
-    ):
+        model: str | None = None,
+    ) -> None:
         super().__init__(
             api_key=api_key,
             base_url=base_url or self.DEFAULT_BASE_URL,
@@ -66,21 +67,9 @@ class GoogleProvider(LLMProvider):
             )
 
         except ClientError as e:
-            return ComparisonResult(
-                winner=None,
-                reasoning=f"Client error: {e}",
-                raw_response={"error": str(e), "error_type": "client"}
-            )
+            return create_error_result(e, "client", "Client error")
         except ServerError as e:
-            return ComparisonResult(
-                winner=None,
-                reasoning=f"Server error: {e}",
-                raw_response={"error": str(e), "error_type": "server"}
-            )
+            return create_error_result(e, "server", "Server error")
         except ValueError as e:
             # JSON parsing errors
-            return ComparisonResult(
-                winner=None,
-                reasoning=f"Parse error: {e}",
-                raw_response={"error": str(e), "error_type": "parse"}
-            )
+            return create_error_result(e, "parse", "Parse error")
