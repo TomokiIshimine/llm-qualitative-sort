@@ -127,7 +127,7 @@ async def main():
     sorter = QualitativeSorter(
         provider=provider,
         criteria="戦闘能力・強さ（1対1で戦った場合にどちらが勝つか）",
-        elimination_count=2,  # 2回負けで脱落
+        elimination_count=5,  # 5回負けで脱落
         comparison_rounds=2,  # 各マッチ2回の比較（偶数必須）
         max_concurrent_requests=5,  # 並列リクエスト数
         on_progress=print_progress,
