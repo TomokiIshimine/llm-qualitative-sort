@@ -56,21 +56,6 @@ class GoogleProvider(LLMProvider):
 
                 return self._parse_response(raw_response)
 
-    def _build_prompt(self, item_a: str, item_b: str, criteria: str) -> str:
-        """Build comparison prompt."""
-        return f"""Compare the following two items based on this criteria: {criteria}
-
-Item A:
-{item_a}
-
-Item B:
-{item_b}
-
-You must respond with ONLY a JSON object in this exact format:
-{{"winner": "A" or "B", "reasoning": "your explanation"}}
-
-Choose which item is better based on the criteria. You must pick either A or B."""
-
     def _parse_response(self, raw_response: dict) -> ComparisonResult:
         """Parse Google Gemini response into ComparisonResult."""
         try:

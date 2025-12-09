@@ -172,7 +172,7 @@ class QualitativeSorter:
                 order = "BA"
                 first, second = item_b, item_a
 
-            result = await self._compare_with_cache(first, second, order)
+            result, cached = await self._compare_with_cache(first, second, order)
 
             # Translate winner back to original A/B
             if result.winner == "A":
@@ -191,7 +191,7 @@ class QualitativeSorter:
                 order=order,
                 winner=actual_winner,
                 reasoning=result.reasoning,
-                cached=getattr(result, '_cached', False)
+                cached=cached
             ))
 
         # Determine overall winner
@@ -214,15 +214,18 @@ class QualitativeSorter:
         item_a: str,
         item_b: str,
         order: str
-    ) -> ComparisonResult:
-        """Compare two items, using cache if available."""
+    ) -> tuple[ComparisonResult, bool]:
+        """Compare two items, using cache if available.
+
+        Returns:
+            Tuple of (ComparisonResult, cached) where cached is True if from cache.
+        """
         # Check cache
         if self.cache:
             cached = await self.cache.get(item_a, item_b, self.criteria, order)
             if cached:
                 self._cache_hits += 1
-                cached._cached = True
-                return cached
+                return cached, True
 
         # Make API call
         async with self._semaphore:
@@ -233,8 +236,7 @@ class QualitativeSorter:
         if self.cache:
             await self.cache.set(item_a, item_b, self.criteria, order, result)
 
-        result._cached = False
-        return result
+        return result, False
 
     def _emit_progress(
         self,
