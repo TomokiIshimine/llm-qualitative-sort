@@ -54,8 +54,9 @@ def google_provider_class():
     try:
         from llm_qualitative_sort.providers.google import GoogleProvider
         return GoogleProvider
-    except Exception as e:
-        pytest.skip(f"GoogleProvider not available: {e}")
+    except BaseException as e:
+        # Use BaseException to catch pyo3_runtime.PanicException and similar errors
+        pytest.skip(f"GoogleProvider not available: {type(e).__name__}: {e}")
 
 
 class TestGoogleProvider:
