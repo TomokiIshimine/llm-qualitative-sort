@@ -1,7 +1,8 @@
-"""OpenAI provider implementation."""
+"""OpenAI provider implementation using the official SDK."""
 
 import json
-import aiohttp
+
+from openai import AsyncOpenAI
 
 from llm_qualitative_sort.providers.base import LLMProvider
 from llm_qualitative_sort.models import ComparisonResult
@@ -10,11 +11,12 @@ from llm_qualitative_sort.models import ComparisonResult
 class OpenAIProvider(LLMProvider):
     """OpenAI API provider for LLM comparisons.
 
+    Uses the official OpenAI Python SDK for API calls.
     Supports OpenAI API and compatible endpoints.
     """
 
     DEFAULT_BASE_URL = "https://api.openai.com/v1"
-    DEFAULT_MODEL = "gpt-5-mini"
+    DEFAULT_MODEL = "gpt-4o-mini"
 
     def __init__(
         self,
@@ -27,6 +29,10 @@ class OpenAIProvider(LLMProvider):
             base_url=base_url or self.DEFAULT_BASE_URL,
             model=model or self.DEFAULT_MODEL
         )
+        self._client = AsyncOpenAI(
+            api_key=api_key,
+            base_url=base_url or self.DEFAULT_BASE_URL
+        )
 
     async def compare(
         self,
@@ -37,29 +43,22 @@ class OpenAIProvider(LLMProvider):
         """Compare two items using OpenAI API."""
         prompt = self._build_prompt(item_a, item_b, criteria)
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{self.base_url}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": self.model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0,
-                },
-            ) as response:
-                raw_response = await response.json()
+        try:
+            response = await self._client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0,
+            )
 
-                if response.status != 200:
-                    return ComparisonResult(
-                        winner=None,
-                        reasoning=f"API error: {raw_response}",
-                        raw_response=raw_response
-                    )
+            raw_response = response.model_dump()
+            return self._parse_response(raw_response)
 
-                return self._parse_response(raw_response)
+        except Exception as e:
+            return ComparisonResult(
+                winner=None,
+                reasoning=f"API error: {e}",
+                raw_response={"error": str(e)}
+            )
 
     def _parse_response(self, raw_response: dict) -> ComparisonResult:
         """Parse OpenAI response into ComparisonResult."""
