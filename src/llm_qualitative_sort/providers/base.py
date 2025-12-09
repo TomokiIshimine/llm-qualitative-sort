@@ -44,7 +44,11 @@ class LLMProvider(ABC):
         pass
 
     def _build_prompt(self, item_a: str, item_b: str, criteria: str) -> str:
-        """Build comparison prompt."""
+        """Build comparison prompt.
+
+        Note: JSON format instructions are not needed here because
+        Structured Outputs guarantee the response format via API parameters.
+        """
         return f"""Compare the following two items based on this criteria: {criteria}
 
 Item A:
@@ -53,7 +57,5 @@ Item A:
 Item B:
 {item_b}
 
-You must respond with ONLY a JSON object in this exact format:
-{{"winner": "A" or "B", "reasoning": "your explanation"}}
-
-Choose which item is better based on the criteria. You must pick either A or B."""
+Choose which item is better based on the criteria. You must pick either A or B.
+Provide your reasoning for the choice."""

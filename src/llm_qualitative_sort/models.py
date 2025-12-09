@@ -1,6 +1,23 @@
 """Data structures for LLM Qualitative Sort."""
 
 from dataclasses import dataclass
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+
+class ComparisonResponse(BaseModel):
+    """Pydantic model for structured output from LLM comparison.
+
+    Used with OpenAI's response_format and Google's response_schema
+    to ensure reliable JSON responses.
+    """
+    winner: Literal["A", "B"] = Field(
+        description="The winner of the comparison: 'A' or 'B'"
+    )
+    reasoning: str = Field(
+        description="Explanation for why this item was chosen as the winner"
+    )
 
 
 @dataclass

@@ -1,18 +1,16 @@
-"""OpenAI provider implementation using the official SDK."""
-
-import json
+"""OpenAI provider implementation using the official SDK with Structured Outputs."""
 
 from openai import AsyncOpenAI
 
 from llm_qualitative_sort.providers.base import LLMProvider
-from llm_qualitative_sort.models import ComparisonResult
+from llm_qualitative_sort.models import ComparisonResult, ComparisonResponse
 
 
 class OpenAIProvider(LLMProvider):
     """OpenAI API provider for LLM comparisons.
 
-    Uses the official OpenAI Python SDK for API calls.
-    Supports OpenAI API and compatible endpoints.
+    Uses the official OpenAI Python SDK with Structured Outputs
+    for reliable JSON responses.
     """
 
     DEFAULT_BASE_URL = "https://api.openai.com/v1"
@@ -40,50 +38,45 @@ class OpenAIProvider(LLMProvider):
         item_b: str,
         criteria: str
     ) -> ComparisonResult:
-        """Compare two items using OpenAI API."""
+        """Compare two items using OpenAI API with Structured Outputs."""
         prompt = self._build_prompt(item_a, item_b, criteria)
 
         try:
-            response = await self._client.chat.completions.create(
+            response = await self._client.beta.chat.completions.parse(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
+                response_format=ComparisonResponse,
                 temperature=0,
             )
 
             raw_response = response.model_dump()
-            return self._parse_response(raw_response)
+            parsed = response.choices[0].message.parsed
+
+            # Check for refusal
+            if response.choices[0].message.refusal:
+                return ComparisonResult(
+                    winner=None,
+                    reasoning=f"Model refused: {response.choices[0].message.refusal}",
+                    raw_response=raw_response
+                )
+
+            # parsed is already validated as ComparisonResponse
+            if parsed is None:
+                return ComparisonResult(
+                    winner=None,
+                    reasoning="Failed to parse structured output",
+                    raw_response=raw_response
+                )
+
+            return ComparisonResult(
+                winner=parsed.winner,
+                reasoning=parsed.reasoning,
+                raw_response=raw_response
+            )
 
         except Exception as e:
             return ComparisonResult(
                 winner=None,
                 reasoning=f"API error: {e}",
                 raw_response={"error": str(e)}
-            )
-
-    def _parse_response(self, raw_response: dict) -> ComparisonResult:
-        """Parse OpenAI response into ComparisonResult."""
-        try:
-            content = raw_response["choices"][0]["message"]["content"]
-            # Try to parse JSON from response
-            data = json.loads(content)
-            winner = data.get("winner")
-            reasoning = data.get("reasoning", "")
-
-            if winner not in ("A", "B"):
-                return ComparisonResult(
-                    winner=None,
-                    reasoning=f"Invalid winner: {winner}",
-                    raw_response=raw_response
-                )
-
-            return ComparisonResult(
-                winner=winner,
-                reasoning=reasoning,
-                raw_response=raw_response
-            )
-        except (KeyError, json.JSONDecodeError) as e:
-            return ComparisonResult(
-                winner=None,
-                reasoning=f"Failed to parse response: {e}",
-                raw_response=raw_response
             )
