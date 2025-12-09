@@ -23,6 +23,7 @@ classifiers = [
 ]
 dependencies = [
     "openai>=1.0.0",
+    "google-genai>=1.0.0",
 ]
 
 [project.optional-dependencies]
