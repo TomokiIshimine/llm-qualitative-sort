@@ -16,6 +16,14 @@ from llm_qualitative_sort.cache.base import Cache
 from llm_qualitative_sort.cache.memory import MemoryCache
 from llm_qualitative_sort.cache.file import FileCache
 from llm_qualitative_sort.sorter import QualitativeSorter
+from llm_qualitative_sort.metrics import (
+    AccuracyMetrics,
+    flatten_rankings,
+    calculate_kendall_tau,
+    calculate_top_k_accuracy,
+    calculate_correct_pair_ratio,
+    calculate_all_metrics,
+)
 
 __all__ = [
     # Models
@@ -38,4 +46,11 @@ __all__ = [
     "FileCache",
     # Sorter
     "QualitativeSorter",
+    # Metrics
+    "AccuracyMetrics",
+    "flatten_rankings",
+    "calculate_kendall_tau",
+    "calculate_top_k_accuracy",
+    "calculate_correct_pair_ratio",
+    "calculate_all_metrics",
 ]
