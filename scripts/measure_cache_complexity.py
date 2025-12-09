@@ -4,11 +4,13 @@
 This script measures the average computational complexity (number of comparisons)
 when using cache functionality in the qualitative sorter.
 
+The cache is designed to reuse comparison results when the same pair
+re-matches in the losers bracket (N >= 2).
+
 Metrics measured:
-- Total comparisons per run (API calls + cache hits)
-- Cache hit rate within single run
-- Cache hit rate across multiple runs
-- Effect of N (elimination_count) on comparison count
+- Total comparisons per single run (API calls + cache hits)
+- Cache hit rate within a single tournament run
+- Effect of N (elimination_count) on cache effectiveness
 
 Usage:
     python scripts/measure_cache_complexity.py [--items N] [--seed S] [--runs R]
@@ -18,7 +20,6 @@ import asyncio
 import argparse
 import sys
 from dataclasses import dataclass
-from typing import Optional
 
 # Add src to path for development
 sys.path.insert(0, "src")
@@ -31,20 +32,21 @@ from llm_qualitative_sort.cache.memory import MemoryCache
 
 
 @dataclass
-class ComplexityResult:
-    """Result of a single complexity measurement."""
+class SingleRunResult:
+    """Result of a single sorting run."""
     n: int  # elimination_count
-    run_number: int
+    seed: int
     total_matches: int
     total_api_calls: int
     cache_hits: int
     total_comparisons: int  # api_calls + cache_hits
     cache_hit_rate: float
+    api_call_reduction: float  # reduction due to cache (cache_hits / total_comparisons)
 
 
 @dataclass
 class AggregatedResult:
-    """Aggregated results across multiple runs."""
+    """Aggregated results across multiple independent runs."""
     n: int
     num_runs: int
     avg_matches: float
@@ -52,19 +54,25 @@ class AggregatedResult:
     avg_cache_hits: float
     avg_total_comparisons: float
     avg_cache_hit_rate: float
-    # First run (no cache) vs subsequent runs
-    first_run_api_calls: int
-    subsequent_avg_api_calls: float
-    cache_efficiency: float  # reduction in API calls due to cache
+    avg_api_call_reduction: float
+    # Min/Max for variance analysis
+    min_cache_hits: int
+    max_cache_hits: int
 
 
-async def run_single_sort(
+async def run_single_sort_with_fresh_cache(
     items: list[str],
     n: int,
     seed: int,
-    cache: Optional[MemoryCache],
-) -> ComplexityResult:
-    """Run a single sort and return complexity metrics."""
+) -> SingleRunResult:
+    """Run a single sort with a fresh cache instance.
+
+    Each run gets its own cache to measure within-run cache effectiveness
+    (i.e., losers bracket re-matches).
+    """
+    # Fresh cache for each run - measures only within-run cache hits
+    cache = MemoryCache()
+
     provider = MockLLMProvider(seed=seed, noise_stddev=3.33)
     sorter = QualitativeSorter(
         provider=provider,
@@ -79,47 +87,84 @@ async def run_single_sort(
 
     total_comparisons = stats.total_api_calls + stats.cache_hits
     cache_hit_rate = stats.cache_hits / total_comparisons if total_comparisons > 0 else 0
+    api_call_reduction = stats.cache_hits / total_comparisons if total_comparisons > 0 else 0
 
-    return ComplexityResult(
+    return SingleRunResult(
         n=n,
-        run_number=0,  # Will be set by caller
+        seed=seed,
         total_matches=stats.total_matches,
         total_api_calls=stats.total_api_calls,
         cache_hits=stats.cache_hits,
         total_comparisons=total_comparisons,
         cache_hit_rate=cache_hit_rate,
+        api_call_reduction=api_call_reduction,
     )
 
 
-async def measure_with_n(
+async def run_single_sort_without_cache(
+    items: list[str],
+    n: int,
+    seed: int,
+) -> SingleRunResult:
+    """Run a single sort without cache for baseline comparison."""
+    provider = MockLLMProvider(seed=seed, noise_stddev=3.33)
+    sorter = QualitativeSorter(
+        provider=provider,
+        criteria="larger is better",
+        elimination_count=n,
+        seed=seed,
+        cache=None,  # No cache
+    )
+
+    result = await sorter.sort(items.copy())
+    stats = result.statistics
+
+    return SingleRunResult(
+        n=n,
+        seed=seed,
+        total_matches=stats.total_matches,
+        total_api_calls=stats.total_api_calls,
+        cache_hits=0,
+        total_comparisons=stats.total_api_calls,
+        cache_hit_rate=0,
+        api_call_reduction=0,
+    )
+
+
+async def measure_complexity_for_n(
     n: int,
     items: list[str],
-    seed: int,
+    base_seed: int,
     num_runs: int,
-) -> tuple[list[ComplexityResult], AggregatedResult]:
-    """Measure complexity for a specific N value across multiple runs."""
-    results: list[ComplexityResult] = []
+) -> tuple[list[SingleRunResult], list[SingleRunResult], AggregatedResult]:
+    """Measure complexity for a specific N value across multiple runs.
 
-    # Use shared cache across runs
-    shared_cache = MemoryCache()
+    Each run uses a different seed to get statistical variance.
+    Each run gets a fresh cache instance.
+    """
+    cached_results: list[SingleRunResult] = []
+    nocache_results: list[SingleRunResult] = []
 
-    for run in range(num_runs):
-        result = await run_single_sort(items, n, seed, shared_cache)
-        result.run_number = run + 1
-        results.append(result)
+    for i in range(num_runs):
+        run_seed = base_seed + i * 1000  # Different seed for each run
 
-    # Calculate aggregates
-    avg_matches = sum(r.total_matches for r in results) / len(results)
-    avg_api_calls = sum(r.total_api_calls for r in results) / len(results)
-    avg_cache_hits = sum(r.cache_hits for r in results) / len(results)
-    avg_total_comparisons = sum(r.total_comparisons for r in results) / len(results)
-    avg_cache_hit_rate = sum(r.cache_hit_rate for r in results) / len(results)
+        # Run with fresh cache
+        cached = await run_single_sort_with_fresh_cache(items, n, run_seed)
+        cached_results.append(cached)
 
-    first_run_api_calls = results[0].total_api_calls
-    subsequent_runs = results[1:] if len(results) > 1 else results
-    subsequent_avg_api_calls = sum(r.total_api_calls for r in subsequent_runs) / len(subsequent_runs)
+        # Run without cache for baseline
+        nocache = await run_single_sort_without_cache(items, n, run_seed)
+        nocache_results.append(nocache)
 
-    cache_efficiency = 1 - (subsequent_avg_api_calls / first_run_api_calls) if first_run_api_calls > 0 else 0
+    # Calculate aggregates for cached runs
+    avg_matches = sum(r.total_matches for r in cached_results) / len(cached_results)
+    avg_api_calls = sum(r.total_api_calls for r in cached_results) / len(cached_results)
+    avg_cache_hits = sum(r.cache_hits for r in cached_results) / len(cached_results)
+    avg_total_comparisons = sum(r.total_comparisons for r in cached_results) / len(cached_results)
+    avg_cache_hit_rate = sum(r.cache_hit_rate for r in cached_results) / len(cached_results)
+    avg_api_call_reduction = sum(r.api_call_reduction for r in cached_results) / len(cached_results)
+    min_cache_hits = min(r.cache_hits for r in cached_results)
+    max_cache_hits = max(r.cache_hits for r in cached_results)
 
     aggregated = AggregatedResult(
         n=n,
@@ -129,29 +174,12 @@ async def measure_with_n(
         avg_cache_hits=avg_cache_hits,
         avg_total_comparisons=avg_total_comparisons,
         avg_cache_hit_rate=avg_cache_hit_rate,
-        first_run_api_calls=first_run_api_calls,
-        subsequent_avg_api_calls=subsequent_avg_api_calls,
-        cache_efficiency=cache_efficiency,
+        avg_api_call_reduction=avg_api_call_reduction,
+        min_cache_hits=min_cache_hits,
+        max_cache_hits=max_cache_hits,
     )
 
-    return results, aggregated
-
-
-async def measure_without_cache(
-    n: int,
-    items: list[str],
-    seed: int,
-    num_runs: int,
-) -> list[ComplexityResult]:
-    """Measure complexity without cache for baseline comparison."""
-    results: list[ComplexityResult] = []
-
-    for run in range(num_runs):
-        result = await run_single_sort(items, n, seed, cache=None)
-        result.run_number = run + 1
-        results.append(result)
-
-    return results
+    return cached_results, nocache_results, aggregated
 
 
 async def run_measurement(
@@ -162,192 +190,160 @@ async def run_measurement(
 ):
     """Run full complexity measurement."""
     print("=" * 80)
-    print("Cache Complexity Measurement")
+    print("Cache Complexity Measurement (Single Run Analysis)")
     print("=" * 80)
     print(f"Items: {num_items}")
-    print(f"Seed: {seed}")
-    print(f"Runs per N: {num_runs}")
+    print(f"Base seed: {seed}")
+    print(f"Independent runs per N: {num_runs}")
     print(f"N values: 1 to {max_n}")
     print(f"Comparison rounds per match: 2 (default)")
+    print()
+    print("Purpose: Measure cache effectiveness within a single tournament run")
+    print("         (losers bracket re-matches reusing previous results)")
     print("=" * 80)
     print()
 
     items = [str(i) for i in range(num_items)]
 
-    all_results: dict[int, AggregatedResult] = {}
-    all_detailed: dict[int, list[ComplexityResult]] = {}
-    baseline_results: dict[int, list[ComplexityResult]] = {}
+    all_cached: dict[int, list[SingleRunResult]] = {}
+    all_nocache: dict[int, list[SingleRunResult]] = {}
+    all_aggregated: dict[int, AggregatedResult] = {}
 
     # Run measurements for each N value
     for n in range(1, max_n + 1):
-        print(f"\n--- Measuring N={n} ---")
+        print(f"Measuring N={n}...", end=" ", flush=True)
+        cached, nocache, aggregated = await measure_complexity_for_n(n, items, seed, num_runs)
+        all_cached[n] = cached
+        all_nocache[n] = nocache
+        all_aggregated[n] = aggregated
+        print(
+            f"avg comparisons={aggregated.avg_total_comparisons:.0f}, "
+            f"avg cache hits={aggregated.avg_cache_hits:.1f} "
+            f"({aggregated.avg_cache_hit_rate:.1%})"
+        )
 
-        # Baseline without cache
-        print(f"  Without cache...", end=" ", flush=True)
-        baseline = await measure_without_cache(n, items, seed, num_runs)
-        baseline_results[n] = baseline
-        print(f"avg API calls: {sum(r.total_api_calls for r in baseline) / len(baseline):.1f}")
-
-        # With cache
-        print(f"  With cache...", end=" ", flush=True)
-        detailed, aggregated = await measure_with_n(n, items, seed, num_runs)
-        all_results[n] = aggregated
-        all_detailed[n] = detailed
-        print(f"avg API calls: {aggregated.avg_api_calls:.1f}, cache efficiency: {aggregated.cache_efficiency:.1%}")
-
-    # Print detailed results
+    # Print results
     print("\n")
-    print_baseline_comparison(baseline_results, all_results, num_runs)
+    print_summary_table(all_aggregated, num_items)
     print()
-    print_detailed_results(all_detailed)
+    print_detailed_runs(all_cached, all_nocache)
     print()
-    print_aggregated_results(all_results)
-    print()
-    print_analysis(all_results, baseline_results, num_items)
+    print_analysis(all_aggregated, num_items)
 
 
-def print_baseline_comparison(
-    baseline: dict[int, list[ComplexityResult]],
-    with_cache: dict[int, AggregatedResult],
-    num_runs: int,
-):
-    """Print comparison between with and without cache."""
+def print_summary_table(results: dict[int, AggregatedResult], num_items: int):
+    """Print summary table of results."""
     print("=" * 100)
-    print("Baseline Comparison (Without Cache vs With Cache)")
+    print("Summary: Average Complexity per Single Run (with Cache)")
     print("=" * 100)
     print(
-        f"{'N':>3} | {'Without Cache':>15} | {'With Cache (avg)':>18} | "
-        f"{'Cache Hits (avg)':>18} | {'Reduction':>12}"
+        f"{'N':>3} | {'Matches':>10} | {'API Calls':>12} | {'Cache Hits':>12} | "
+        f"{'Total Comp.':>12} | {'Hit Rate':>10} | {'Saved':>10}"
     )
-    print(f"{'':>3} | {'API Calls':>15} | {'API Calls':>18} | {'':>18} | {'':>12}")
     print("-" * 100)
 
-    for n in sorted(baseline.keys()):
-        baseline_avg = sum(r.total_api_calls for r in baseline[n]) / len(baseline[n])
-        cached = with_cache[n]
-        reduction = (baseline_avg - cached.avg_api_calls) / baseline_avg if baseline_avg > 0 else 0
-
+    for n in sorted(results.keys()):
+        r = results[n]
+        saved = r.avg_cache_hits  # Cache hits = API calls saved
         print(
-            f"{n:>3} | {baseline_avg:>15.1f} | {cached.avg_api_calls:>18.1f} | "
-            f"{cached.avg_cache_hits:>18.1f} | {reduction:>11.1%}"
+            f"{n:>3} | {r.avg_matches:>10.1f} | {r.avg_api_calls:>12.1f} | "
+            f"{r.avg_cache_hits:>12.1f} | {r.avg_total_comparisons:>12.1f} | "
+            f"{r.avg_cache_hit_rate:>10.1%} | {saved:>10.1f}"
         )
 
     print("=" * 100)
+    print("Note: Each run uses a fresh cache. Cache hits come from losers bracket re-matches.")
 
 
-def print_detailed_results(results: dict[int, list[ComplexityResult]]):
-    """Print detailed run-by-run results."""
+def print_detailed_runs(
+    cached: dict[int, list[SingleRunResult]],
+    nocache: dict[int, list[SingleRunResult]],
+):
+    """Print detailed per-run results."""
     print("=" * 100)
-    print("Detailed Results (Run-by-Run with Shared Cache)")
+    print("Detailed Results: Per-Run Comparison (With Cache vs Without Cache)")
     print("=" * 100)
 
-    for n in sorted(results.keys()):
+    for n in sorted(cached.keys()):
         print(f"\nN={n}:")
         print(
-            f"  {'Run':>4} | {'Matches':>8} | {'API Calls':>10} | "
-            f"{'Cache Hits':>12} | {'Total Comp.':>12} | {'Hit Rate':>10}"
+            f"  {'Run':>4} | {'Seed':>8} | "
+            f"{'With Cache':>35} | {'Without Cache':>15}"
         )
-        print("  " + "-" * 70)
+        print(
+            f"  {'':>4} | {'':>8} | "
+            f"{'API':>8} {'Hits':>8} {'Total':>8} {'Rate':>9} | "
+            f"{'API Calls':>15}"
+        )
+        print("  " + "-" * 90)
 
-        for r in results[n]:
+        for i, (c, nc) in enumerate(zip(cached[n], nocache[n])):
             print(
-                f"  {r.run_number:>4} | {r.total_matches:>8} | {r.total_api_calls:>10} | "
-                f"{r.cache_hits:>12} | {r.total_comparisons:>12} | {r.cache_hit_rate:>10.1%}"
+                f"  {i+1:>4} | {c.seed:>8} | "
+                f"{c.total_api_calls:>8} {c.cache_hits:>8} {c.total_comparisons:>8} {c.cache_hit_rate:>8.1%} | "
+                f"{nc.total_api_calls:>15}"
             )
 
 
-def print_aggregated_results(results: dict[int, AggregatedResult]):
-    """Print aggregated results table."""
-    print("=" * 100)
-    print("Aggregated Results Summary")
-    print("=" * 100)
-    print(
-        f"{'N':>3} | {'Avg Matches':>12} | {'Avg API':>10} | {'Avg Cache':>10} | "
-        f"{'Avg Total':>10} | {'Hit Rate':>10} | {'Cache Eff.':>12}"
-    )
-    print(f"{'':>3} | {'':>12} | {'Calls':>10} | {'Hits':>10} | {'Comp.':>10} | {'':>10} | {'':>12}")
-    print("-" * 100)
+def print_analysis(results: dict[int, AggregatedResult], num_items: int):
+    """Print analysis of results."""
+    print("=" * 80)
+    print("Analysis")
+    print("=" * 80)
 
+    print("\n1. Computational Complexity Formula:")
+    print(f"   Total comparisons ≈ N × (num_items - 1) × comparison_rounds")
+    print(f"   With num_items = {num_items}, comparison_rounds = 2:")
+    for n in sorted(results.keys()):
+        theoretical = n * (num_items - 1) * 2
+        actual = results[n].avg_total_comparisons
+        print(f"   N={n}: theoretical ≈ {theoretical}, actual = {actual:.0f}")
+
+    print("\n2. Cache Effectiveness by N:")
+    print("   Cache hits occur when the same pair re-matches in losers bracket.")
+    print("   Higher N = more rounds in losers bracket = more potential re-matches.")
+    print()
     for n in sorted(results.keys()):
         r = results[n]
         print(
-            f"{r.n:>3} | {r.avg_matches:>12.1f} | {r.avg_api_calls:>10.1f} | "
-            f"{r.avg_cache_hits:>10.1f} | {r.avg_total_comparisons:>10.1f} | "
-            f"{r.avg_cache_hit_rate:>10.1%} | {r.cache_efficiency:>11.1%}"
+            f"   N={n}: {r.avg_cache_hits:.1f} cache hits "
+            f"(range: {r.min_cache_hits}-{r.max_cache_hits}), "
+            f"saves {r.avg_cache_hit_rate:.1%} of comparisons"
         )
 
-    print("=" * 100)
+    print("\n3. Key Findings:")
+    n1 = results.get(1)
+    if n1:
+        print(f"   - N=1 (single elimination): {n1.avg_cache_hits:.1f} cache hits")
+        print("     (no losers bracket, minimal re-matches)")
 
+    max_n = max(results.keys())
+    r_max = results[max_n]
+    print(
+        f"   - N={max_n}: {r_max.avg_cache_hits:.1f} cache hits, "
+        f"reduces API calls by {r_max.avg_cache_hit_rate:.1%}"
+    )
 
-def print_analysis(
-    results: dict[int, AggregatedResult],
-    baseline: dict[int, list[ComplexityResult]],
-    num_items: int,
-):
-    """Print analysis of the results."""
-    print("Analysis")
-    print("-" * 80)
-
-    # Theoretical complexity
-    print("\n1. Theoretical Match Complexity:")
-    print(f"   Formula: matches = N * num_items - N = N * (num_items - 1)")
-    print(f"   Where N = elimination_count, num_items = {num_items}")
-
-    for n in sorted(results.keys()):
-        theoretical = n * (num_items - 1)
-        actual = results[n].avg_matches
-        print(f"   N={n}: theoretical={theoretical}, actual={actual:.1f}")
-
-    # Comparison complexity
-    print("\n2. Comparison Complexity:")
-    print("   Each match requires comparison_rounds (default=2) comparisons.")
-    print("   Total comparisons = matches * comparison_rounds")
-
-    for n in sorted(results.keys()):
-        r = results[n]
-        print(f"   N={n}: {r.avg_matches:.1f} matches * 2 = {r.avg_total_comparisons:.1f} comparisons")
-
-    # Cache effectiveness
-    print("\n3. Cache Effectiveness Analysis:")
-    print("   Cache is effective when the same item pairs are compared again")
-    print("   with the same presentation order.")
-
-    for n in sorted(results.keys()):
-        r = results[n]
-        baseline_avg = sum(b.total_api_calls for b in baseline[n]) / len(baseline[n])
-        savings = baseline_avg - r.avg_api_calls
-        print(f"   N={n}: {savings:.1f} API calls saved ({r.cache_efficiency:.1%} efficiency)")
-
-    # Average complexity summary
-    print("\n4. Average Computational Complexity Summary:")
-    print(f"   {'N':>3} | {'Avg Comparisons':>18} | {'Comparisons/Item':>18}")
-    print("   " + "-" * 50)
-    for n in sorted(results.keys()):
-        r = results[n]
-        per_item = r.avg_total_comparisons / num_items
-        print(f"   {n:>3} | {r.avg_total_comparisons:>18.1f} | {per_item:>18.2f}")
-
-    print("\n5. Key Findings:")
+    # Compare with/without cache savings
     if len(results) >= 2:
-        first_n = min(results.keys())
-        last_n = max(results.keys())
-        ratio = results[last_n].avg_total_comparisons / results[first_n].avg_total_comparisons
-        print(f"   - Comparisons increase {ratio:.1f}x from N={first_n} to N={last_n}")
-        print(f"   - N=1 (single elimination): {results[first_n].avg_total_comparisons:.0f} comparisons")
-        print(f"   - N={last_n} (multi-elimination): {results[last_n].avg_total_comparisons:.0f} comparisons")
+        total_without_cache = sum(r.avg_total_comparisons for r in results.values())
+        total_with_cache = sum(r.avg_api_calls for r in results.values())
+        overall_savings = (total_without_cache - total_with_cache) / total_without_cache
+        print(f"\n   Overall API call reduction with cache: {overall_savings:.1%}")
 
-    # Cache hit observation
-    any_cache_hits = any(r.avg_cache_hits > 0 for r in results.values())
-    if not any_cache_hits:
-        print("   - Cache hits within single run are minimal because")
-        print("     tournament avoids repeating the same match.")
-        print("   - Cache is more effective across multiple sorting runs")
-        print("     with the same data (e.g., re-ranking after data changes).")
+    print("\n4. Complexity Summary (per item):")
+    print(f"   {'N':>3} | {'Comparisons/Item':>18} | {'API Calls/Item':>16}")
+    print("   " + "-" * 45)
+    for n in sorted(results.keys()):
+        r = results[n]
+        comp_per_item = r.avg_total_comparisons / num_items
+        api_per_item = r.avg_api_calls / num_items
+        print(f"   {n:>3} | {comp_per_item:>18.2f} | {api_per_item:>16.2f}")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Measure cache complexity for qualitative sorting"
+        description="Measure cache complexity for qualitative sorting (single run analysis)"
     )
     parser.add_argument(
         "--items",
@@ -359,13 +355,13 @@ def main():
         "--seed",
         type=int,
         default=42,
-        help="Random seed for reproducibility (default: 42)",
+        help="Base random seed for reproducibility (default: 42)",
     )
     parser.add_argument(
         "--runs",
         type=int,
-        default=3,
-        help="Number of runs per N value (default: 3)",
+        default=5,
+        help="Number of independent runs per N value (default: 5)",
     )
     parser.add_argument(
         "--max-n",
