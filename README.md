@@ -213,6 +213,52 @@ src/llm_qualitative_sort/
 
 LLMには「先に提示されたものを選びやすい」などの位置バイアスがあります。これを軽減するため、各マッチで提示順序を入れ替えて複数回比較を行い、多数決で勝者を決定します。
 
+## 開発環境セットアップ
+
+### 環境構築
+
+```bash
+# リポジトリをクローン
+git clone https://github.com/TomokiIshimine/llm-qualitative-sort.git
+cd llm-qualitative-sort
+
+# 開発モードでインストール（開発用依存関係を含む）
+pip install -e ".[dev]"
+
+# テスト実行で動作確認
+python -m pytest tests/ -v
+```
+
+### 開発用依存関係
+
+- `pytest>=7.0.0` - テストフレームワーク
+- `pytest-asyncio>=0.21.0` - 非同期テストサポート
+- `scipy>=1.10.0` - 統計処理
+
+### テストコマンド
+
+```bash
+# 全テスト実行
+python -m pytest tests/ -v
+
+# 特定のテストファイル
+python -m pytest tests/test_sorter.py -v
+
+# 特定のテストクラス
+python -m pytest tests/test_sorter.py::TestQualitativeSorterSort -v
+
+# カバレッジ付き
+python -m pytest tests/ --cov=src/llm_qualitative_sort
+```
+
+### 開発方針
+
+このプロジェクトではテスト駆動開発（TDD）を採用しています：
+
+1. **Red**: 失敗するテストを先に書く
+2. **Green**: テストをパスする最小限のコードを実装
+3. **Refactor**: コードを改善（テストは常にパス状態を維持）
+
 ## 必要要件
 
 - Python >= 3.10
