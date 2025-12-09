@@ -11,7 +11,7 @@ class GoogleProvider(LLMProvider):
     """Google Gemini API provider for LLM comparisons."""
 
     DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
-    DEFAULT_MODEL = "gemini-2.0-flash"
+    DEFAULT_MODEL = "gemini-2.5-flash"
 
     def __init__(
         self,
