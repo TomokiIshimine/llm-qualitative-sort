@@ -1,8 +1,0 @@
-LICENSE
-pyproject.toml
-src/llm_qualitative_sort.egg-info/PKG-INFO
-src/llm_qualitative_sort.egg-info/SOURCES.txt
-src/llm_qualitative_sort.egg-info/dependency_links.txt
-src/llm_qualitative_sort.egg-info/requires.txt
-src/llm_qualitative_sort.egg-info/top_level.txt
-tests/test_models.py
