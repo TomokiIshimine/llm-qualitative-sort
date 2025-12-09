@@ -1,8 +1,158 @@
 """Cache implementations for LLM Qualitative Sort."""
 
-from llm_qualitative_sort.cache.base import Cache
-from llm_qualitative_sort.cache.memory import MemoryCache
-from llm_qualitative_sort.cache.file import FileCache
+import json
+import hashlib
+from abc import ABC, abstractmethod
+from pathlib import Path
+
+from llm_qualitative_sort.models import ComparisonResult
+
+
+class Cache(ABC):
+    """Abstract base class for caching comparison results.
+
+    Cache key is composed of:
+    - item_a: First item text
+    - item_b: Second item text
+    - criteria: Evaluation criteria
+    - order: "AB" or "BA" indicating presentation order
+    """
+
+    @abstractmethod
+    async def get(
+        self,
+        item_a: str,
+        item_b: str,
+        criteria: str,
+        order: str
+    ) -> ComparisonResult | None:
+        """Get cached comparison result."""
+        pass
+
+    @abstractmethod
+    async def set(
+        self,
+        item_a: str,
+        item_b: str,
+        criteria: str,
+        order: str,
+        result: ComparisonResult
+    ) -> None:
+        """Store comparison result in cache."""
+        pass
+
+    def _make_key(
+        self,
+        item_a: str,
+        item_b: str,
+        criteria: str,
+        order: str
+    ) -> str:
+        """Create cache key from components."""
+        return f"{hash(item_a)}:{hash(item_b)}:{hash(criteria)}:{order}"
+
+
+class MemoryCache(Cache):
+    """In-memory cache for comparison results.
+
+    Simple dictionary-based cache that stores results in memory.
+    Not persistent across runs.
+    """
+
+    def __init__(self):
+        self._cache: dict[str, ComparisonResult] = {}
+
+    async def get(
+        self,
+        item_a: str,
+        item_b: str,
+        criteria: str,
+        order: str
+    ) -> ComparisonResult | None:
+        """Get cached comparison result from memory."""
+        key = self._make_key(item_a, item_b, criteria, order)
+        return self._cache.get(key)
+
+    async def set(
+        self,
+        item_a: str,
+        item_b: str,
+        criteria: str,
+        order: str,
+        result: ComparisonResult
+    ) -> None:
+        """Store comparison result in memory."""
+        key = self._make_key(item_a, item_b, criteria, order)
+        self._cache[key] = result
+
+
+class FileCache(Cache):
+    """File-based cache for comparison results.
+
+    Stores results as JSON files in a directory.
+    Persistent across runs.
+    """
+
+    def __init__(self, cache_dir: str):
+        self._cache_dir = Path(cache_dir)
+        self._cache_dir.mkdir(parents=True, exist_ok=True)
+
+    async def get(
+        self,
+        item_a: str,
+        item_b: str,
+        criteria: str,
+        order: str
+    ) -> ComparisonResult | None:
+        """Get cached comparison result from file."""
+        cache_file = self._get_cache_file(item_a, item_b, criteria, order)
+
+        if not cache_file.exists():
+            return None
+
+        try:
+            with open(cache_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return ComparisonResult(
+                    winner=data["winner"],
+                    reasoning=data["reasoning"],
+                    raw_response=data["raw_response"]
+                )
+        except (json.JSONDecodeError, KeyError):
+            return None
+
+    async def set(
+        self,
+        item_a: str,
+        item_b: str,
+        criteria: str,
+        order: str,
+        result: ComparisonResult
+    ) -> None:
+        """Store comparison result in file."""
+        cache_file = self._get_cache_file(item_a, item_b, criteria, order)
+
+        data = {
+            "winner": result.winner,
+            "reasoning": result.reasoning,
+            "raw_response": result.raw_response
+        }
+
+        with open(cache_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+    def _get_cache_file(
+        self,
+        item_a: str,
+        item_b: str,
+        criteria: str,
+        order: str
+    ) -> Path:
+        """Get cache file path for given parameters."""
+        key = f"{item_a}:{item_b}:{criteria}:{order}"
+        hash_key = hashlib.sha256(key.encode()).hexdigest()[:16]
+        return self._cache_dir / f"{hash_key}.json"
+
 
 __all__ = [
     "Cache",

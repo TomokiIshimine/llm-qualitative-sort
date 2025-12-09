@@ -5,7 +5,7 @@ import time
 from typing import Callable
 
 from llm_qualitative_sort.providers.base import LLMProvider
-from llm_qualitative_sort.cache.base import Cache
+from llm_qualitative_sort.cache import Cache
 from llm_qualitative_sort.tournament.multi_elimination import MultiEliminationTournament
 from llm_qualitative_sort.models import (
     ComparisonResult,

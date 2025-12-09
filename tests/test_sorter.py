@@ -3,7 +3,7 @@
 import pytest
 from llm_qualitative_sort.sorter import QualitativeSorter
 from llm_qualitative_sort.providers.mock import MockLLMProvider
-from llm_qualitative_sort.cache.memory import MemoryCache
+from llm_qualitative_sort.cache import MemoryCache
 from llm_qualitative_sort.events import EventType, ProgressEvent
 from llm_qualitative_sort.models import SortResult
 

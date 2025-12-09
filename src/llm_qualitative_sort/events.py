@@ -9,7 +9,6 @@ class EventType(Enum):
     MATCH_START = auto()
     MATCH_END = auto()
     ROUND_END = auto()
-    BRACKET_CHANGE = auto()
 
 
 @dataclass
