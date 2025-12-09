@@ -121,13 +121,14 @@ async def main():
 
     provider = OpenAIProvider(
         api_key=api_key,
-        model="gpt-5-mini-2025-08-07"
+        model="gpt-5-mini-2025-08-07",
+        temperature=None,  # gpt-5-mini does not support temperature=0
     )
 
     sorter = QualitativeSorter(
         provider=provider,
         criteria="戦闘能力・強さ（1対1で戦った場合にどちらが勝つか）",
-        elimination_count=5,  # 5回負けで脱落
+        elimination_count=2,  # 2回負けで脱落
         comparison_rounds=2,  # 各マッチ2回の比較（偶数必須）
         max_concurrent_requests=5,  # 並列リクエスト数
         on_progress=print_progress,
@@ -158,6 +159,22 @@ async def main():
     print(f"  Cache hits: {result.statistics.cache_hits}")
     print(f"  Elapsed time: {elapsed:.2f}s")
     print(f"  Avg time per API call: {elapsed / max(result.statistics.total_api_calls, 1):.2f}s")
+
+    # Show detailed reasoning for some matches
+    print("\n" + "=" * 60)
+    print("SAMPLE MATCH DETAILS (with reasoning)")
+    print("=" * 60)
+
+    # Show first 20 matches with reasoning
+    for i, match in enumerate(result.match_history[:20]):
+        winner_name = match.item_a if match.winner == "A" else match.item_b if match.winner == "B" else "Draw"
+        print(f"\n[Match {i+1}] {match.item_a} vs {match.item_b}")
+        print(f"  Winner: {winner_name}")
+        for j, round_result in enumerate(match.rounds):
+            print(f"  Round {j+1} ({round_result.order}): {round_result.winner} won")
+            # Truncate long reasoning
+            reasoning = round_result.reasoning[:200] + "..." if len(round_result.reasoning) > 200 else round_result.reasoning
+            print(f"    Reason: {reasoning}")
 
 
 if __name__ == "__main__":

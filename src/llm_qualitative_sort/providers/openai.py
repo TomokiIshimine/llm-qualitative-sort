@@ -20,7 +20,8 @@ class OpenAIProvider(LLMProvider):
         self,
         api_key: str,
         base_url: str | None = None,
-        model: str | None = None
+        model: str | None = None,
+        temperature: float | None = 0,
     ):
         super().__init__(
             api_key=api_key,
@@ -31,6 +32,7 @@ class OpenAIProvider(LLMProvider):
             api_key=api_key,
             base_url=base_url or self.DEFAULT_BASE_URL
         )
+        self._temperature = temperature
 
     async def compare(
         self,
@@ -42,12 +44,16 @@ class OpenAIProvider(LLMProvider):
         prompt = self._build_prompt(item_a, item_b, criteria)
 
         try:
-            response = await self._client.beta.chat.completions.parse(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                response_format=ComparisonResponse,
-                temperature=0,
-            )
+            # Build kwargs, only include temperature if specified
+            kwargs = {
+                "model": self.model,
+                "messages": [{"role": "user", "content": prompt}],
+                "response_format": ComparisonResponse,
+            }
+            if self._temperature is not None:
+                kwargs["temperature"] = self._temperature
+
+            response = await self._client.beta.chat.completions.parse(**kwargs)
 
             raw_response = response.model_dump()
             parsed = response.choices[0].message.parsed
