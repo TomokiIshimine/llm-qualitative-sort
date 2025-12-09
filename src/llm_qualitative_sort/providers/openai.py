@@ -14,7 +14,7 @@ class OpenAIProvider(LLMProvider):
     """
 
     DEFAULT_BASE_URL = "https://api.openai.com/v1"
-    DEFAULT_MODEL = "gpt-5-mini"
+    DEFAULT_MODEL = "gpt-4o-mini"
 
     def __init__(
         self,
