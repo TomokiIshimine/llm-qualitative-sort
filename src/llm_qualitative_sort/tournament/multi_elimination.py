@@ -1,7 +1,7 @@
 """Multi-elimination tournament implementation."""
 
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
