@@ -16,15 +16,11 @@ class TestEventType:
     def test_round_end_exists(self):
         assert EventType.ROUND_END is not None
 
-    def test_bracket_change_exists(self):
-        assert EventType.BRACKET_CHANGE is not None
-
     def test_event_types_are_distinct(self):
         types = [
             EventType.MATCH_START,
             EventType.MATCH_END,
             EventType.ROUND_END,
-            EventType.BRACKET_CHANGE,
         ]
         assert len(types) == len(set(types))
 
@@ -57,13 +53,3 @@ class TestProgressEvent:
         assert event.type == EventType.MATCH_END
         assert event.data["winner"] == "A"
 
-    def test_create_bracket_change_event(self):
-        event = ProgressEvent(
-            type=EventType.BRACKET_CHANGE,
-            message="Item moved to losers bracket",
-            completed=3,
-            total=10,
-            data={"item": "text1", "new_bracket": 1}
-        )
-        assert event.type == EventType.BRACKET_CHANGE
-        assert event.data["new_bracket"] == 1

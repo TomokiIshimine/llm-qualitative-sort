@@ -5,9 +5,7 @@ import tempfile
 import os
 from abc import ABC
 
-from llm_qualitative_sort.cache.base import Cache
-from llm_qualitative_sort.cache.memory import MemoryCache
-from llm_qualitative_sort.cache.file import FileCache
+from llm_qualitative_sort.cache import Cache, MemoryCache, FileCache
 from llm_qualitative_sort.models import ComparisonResult
 
 
