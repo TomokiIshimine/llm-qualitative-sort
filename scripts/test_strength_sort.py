@@ -114,15 +114,15 @@ async def main():
     print("=" * 60)
     print("LLM Qualitative Sort - Strength Ranking Test")
     print("=" * 60)
-    print(f"Model: gpt-5-mini-2025-08-07")
+    print(f"Model: gpt-5-nano-2025-08-07")
     print(f"Items: {len(ITEMS)}")
     print(f"Criteria: 戦闘能力・強さ")
     print("=" * 60)
 
     provider = OpenAIProvider(
         api_key=api_key,
-        model="gpt-5-mini-2025-08-07",
-        temperature=None,  # gpt-5-mini does not support temperature=0
+        model="gpt-5-nano-2025-08-07",
+        temperature=None,  # gpt-5-nano does not support temperature=0
     )
 
     sorter = QualitativeSorter(
