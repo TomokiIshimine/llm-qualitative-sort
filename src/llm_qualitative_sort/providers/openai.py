@@ -1,6 +1,6 @@
 """OpenAI provider implementation using the official SDK with Structured Outputs."""
 
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, APIError, APIConnectionError, RateLimitError, APITimeoutError
 
 from llm_qualitative_sort.providers.base import LLMProvider
 from llm_qualitative_sort.models import ComparisonResult, ComparisonResponse
@@ -80,9 +80,27 @@ class OpenAIProvider(LLMProvider):
                 raw_response=raw_response
             )
 
-        except Exception as e:
+        except RateLimitError as e:
+            return ComparisonResult(
+                winner=None,
+                reasoning=f"Rate limit exceeded: {e}",
+                raw_response={"error": str(e), "error_type": "rate_limit"}
+            )
+        except APITimeoutError as e:
+            return ComparisonResult(
+                winner=None,
+                reasoning=f"Request timeout: {e}",
+                raw_response={"error": str(e), "error_type": "timeout"}
+            )
+        except APIConnectionError as e:
+            return ComparisonResult(
+                winner=None,
+                reasoning=f"Connection error: {e}",
+                raw_response={"error": str(e), "error_type": "connection"}
+            )
+        except APIError as e:
             return ComparisonResult(
                 winner=None,
                 reasoning=f"API error: {e}",
-                raw_response={"error": str(e)}
+                raw_response={"error": str(e), "error_type": "api"}
             )

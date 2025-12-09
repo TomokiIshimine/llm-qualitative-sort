@@ -8,7 +8,7 @@ This module provides various output formats for sort results:
 
 from dataclasses import dataclass
 
-from llm_qualitative_sort.models import SortResult
+from llm_qualitative_sort.models import SortResult, MatchResult
 
 
 # Default tier thresholds (percentile >= threshold)
@@ -19,6 +19,67 @@ DEFAULT_TIER_THRESHOLDS: dict[str, int] = {
     "C": 30,
     "D": 0,
 }
+
+
+# =============================================================================
+# Utility Functions
+# =============================================================================
+
+
+def _calculate_wins_by_item(match_history: list[MatchResult]) -> dict[str, int]:
+    """Calculate total wins for each item from match history.
+
+    Args:
+        match_history: List of match results
+
+    Returns:
+        Dictionary mapping item to win count
+    """
+    wins_by_item: dict[str, int] = {}
+    for match in match_history:
+        if match.winner == "A":
+            wins_by_item[match.item_a] = wins_by_item.get(match.item_a, 0) + 1
+        elif match.winner == "B":
+            wins_by_item[match.item_b] = wins_by_item.get(match.item_b, 0) + 1
+    return wins_by_item
+
+
+def _calculate_total_items(rankings: list[tuple[int, list[str]]]) -> int:
+    """Calculate total number of items from rankings.
+
+    Args:
+        rankings: List of (rank, items) tuples
+
+    Returns:
+        Total number of items
+    """
+    return sum(len(items) for _rank, items in rankings)
+
+
+def _get_tier_for_percentile(
+    percentile: float,
+    thresholds: dict[str, int]
+) -> str:
+    """Determine tier classification for a percentile score.
+
+    Args:
+        percentile: Percentile score (0.0-100.0)
+        thresholds: Dictionary mapping tier name to minimum percentile
+
+    Returns:
+        Tier name (e.g., "S", "A", "B", "C", "D")
+    """
+    # Sort thresholds by value descending
+    sorted_tiers = sorted(thresholds.items(), key=lambda x: x[1], reverse=True)
+
+    # Default to lowest tier if no match
+    default_tier = sorted_tiers[-1][0] if sorted_tiers else "D"
+
+    for tier_name, threshold in sorted_tiers:
+        if percentile >= threshold:
+            return tier_name
+
+    return default_tier
 
 
 @dataclass
@@ -124,13 +185,8 @@ def to_ranking(result: SortResult) -> RankingOutput:
     if not result.rankings:
         return RankingOutput(entries=[], total_items=0)
 
-    # Calculate wins from match history
-    wins_by_item: dict[str, int] = {}
-    for match in result.match_history:
-        if match.winner == "A":
-            wins_by_item[match.item_a] = wins_by_item.get(match.item_a, 0) + 1
-        elif match.winner == "B":
-            wins_by_item[match.item_b] = wins_by_item.get(match.item_b, 0) + 1
+    wins_by_item = _calculate_wins_by_item(result.match_history)
+    total_items = _calculate_total_items(result.rankings)
 
     entries: list[RankingEntry] = []
     for rank, items in result.rankings:
@@ -146,7 +202,6 @@ def to_ranking(result: SortResult) -> RankingOutput:
             )
 
     entries.sort(key=lambda e: e.rank)
-    total_items = sum(len(items) for _rank, items in result.rankings)
 
     return RankingOutput(entries=entries, total_items=total_items)
 
@@ -169,10 +224,7 @@ def to_percentile(
         return PercentileOutput(entries=[], total_items=0)
 
     thresholds = tier_thresholds or DEFAULT_TIER_THRESHOLDS
-    total_items = sum(len(items) for _rank, items in result.rankings)
-
-    # Sort thresholds by value descending for tier lookup
-    sorted_tiers = sorted(thresholds.items(), key=lambda x: x[1], reverse=True)
+    total_items = _calculate_total_items(result.rankings)
 
     entries: list[PercentileEntry] = []
     for rank, items in result.rankings:
@@ -182,12 +234,7 @@ def to_percentile(
         else:
             percentile = (1 - (rank - 1) / total_items) * 100
 
-        # Get tier based on percentile
-        tier = sorted_tiers[-1][0] if sorted_tiers else "D"
-        for tier_name, threshold in sorted_tiers:
-            if percentile >= threshold:
-                tier = tier_name
-                break
+        tier = _get_tier_for_percentile(percentile, thresholds)
 
         for item in items:
             entries.append(

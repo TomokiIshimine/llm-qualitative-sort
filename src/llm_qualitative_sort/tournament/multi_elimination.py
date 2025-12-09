@@ -109,35 +109,105 @@ class MultiEliminationTournament:
         if len(active) < 2:
             return []
 
-        # Group by loss count (brackets)
+        brackets = self._group_by_losses(active)
+        return self._create_matches_from_brackets(brackets)
+
+    def _group_by_losses(
+        self, participants: list[Participant]
+    ) -> dict[int, list[Participant]]:
+        """Group participants by their loss count.
+
+        Args:
+            participants: List of active participants
+
+        Returns:
+            Dictionary mapping loss count to list of participants
+        """
         brackets: dict[int, list[Participant]] = {}
-        for p in active:
+        for p in participants:
             if p.losses not in brackets:
                 brackets[p.losses] = []
             brackets[p.losses].append(p)
+        return brackets
 
-        matches = []
+    def _create_matches_from_brackets(
+        self, brackets: dict[int, list[Participant]]
+    ) -> list[tuple[str, str]]:
+        """Create match pairings from loss brackets.
 
-        # Process each bracket
+        Pairs participants within the same bracket first.
+        If a bracket has an odd number, the remaining participant
+        may be matched with someone from the next bracket.
+
+        Args:
+            brackets: Dictionary mapping loss count to participants
+
+        Returns:
+            List of (item_a, item_b) match tuples
+        """
+        matches: list[tuple[str, str]] = []
+
         for loss_count in sorted(brackets.keys()):
             bracket = brackets[loss_count]
             self._rng.shuffle(bracket)
 
-            # Pair up participants
-            for i in range(0, len(bracket) - 1, 2):
-                p1, p2 = bracket[i], bracket[i + 1]
-                matches.append((p1.item, p2.item))
+            # Pair up participants within bracket
+            paired_matches = self._pair_within_bracket(bracket)
+            matches.extend(paired_matches)
 
-            # If odd number, the remaining participant waits
-            # or can be matched with someone from another bracket
-            if len(bracket) % 2 == 1 and loss_count + 1 in brackets:
-                remaining = bracket[-1]
-                next_bracket = brackets[loss_count + 1]
-                if next_bracket:
-                    opponent = next_bracket.pop()
-                    matches.append((remaining.item, opponent.item))
+            # Handle odd participant by matching with next bracket
+            if len(bracket) % 2 == 1:
+                cross_match = self._match_odd_participant(
+                    bracket[-1], loss_count, brackets
+                )
+                if cross_match:
+                    matches.append(cross_match)
 
         return matches
+
+    def _pair_within_bracket(
+        self, bracket: list[Participant]
+    ) -> list[tuple[str, str]]:
+        """Pair up participants within a single bracket.
+
+        Args:
+            bracket: List of participants (already shuffled)
+
+        Returns:
+            List of (item_a, item_b) match tuples
+        """
+        matches: list[tuple[str, str]] = []
+        for i in range(0, len(bracket) - 1, 2):
+            p1, p2 = bracket[i], bracket[i + 1]
+            matches.append((p1.item, p2.item))
+        return matches
+
+    def _match_odd_participant(
+        self,
+        remaining: Participant,
+        current_loss_count: int,
+        brackets: dict[int, list[Participant]]
+    ) -> tuple[str, str] | None:
+        """Try to match an odd participant with someone from the next bracket.
+
+        Args:
+            remaining: The participant without a pair
+            current_loss_count: The loss count of the current bracket
+            brackets: All loss brackets
+
+        Returns:
+            Match tuple if an opponent was found, None otherwise
+        """
+        next_loss_count = current_loss_count + 1
+        if next_loss_count not in brackets:
+            return None
+
+        next_bracket = brackets[next_loss_count]
+        if not next_bracket:
+            return None
+
+        opponent = next_bracket.pop()
+        return (remaining.item, opponent.item)
 
     def is_complete(self) -> bool:
         """Check if tournament is complete.
