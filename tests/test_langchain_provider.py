@@ -1,7 +1,7 @@
 """Tests for LangChainProvider."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from llm_qualitative_sort.providers.base import LLMProvider
 from llm_qualitative_sort.providers.langchain import LangChainProvider
@@ -61,7 +61,7 @@ class TestLangChainProviderCompare:
         """Create a LangChainProvider with mock LLM."""
         return LangChainProvider(llm=mock_llm)
 
-    async def test_compare_returns_comparison_result(self, provider, mock_llm):
+    async def test_compare_returns_comparison_result(self, provider):
         """compare should return ComparisonResult."""
         mock_response = ComparisonResponse(winner="A", reasoning="A is better")
         provider._structured_llm.ainvoke = AsyncMock(return_value=mock_response)
@@ -72,7 +72,7 @@ class TestLangChainProviderCompare:
         assert result.winner == "A"
         assert result.reasoning == "A is better"
 
-    async def test_compare_calls_ainvoke_with_prompt(self, provider, mock_llm):
+    async def test_compare_calls_ainvoke_with_prompt(self, provider):
         """compare should call ainvoke with the built prompt."""
         mock_response = ComparisonResponse(winner="B", reasoning="B is better")
         provider._structured_llm.ainvoke = AsyncMock(return_value=mock_response)
