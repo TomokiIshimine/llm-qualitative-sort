@@ -2,7 +2,7 @@
 
 import asyncio
 import time
-from typing import Callable
+from typing import Callable, Literal
 
 from llm_qualitative_sort.providers.base import LLMProvider
 from llm_qualitative_sort.cache import Cache
@@ -15,6 +15,13 @@ from llm_qualitative_sort.models import (
     Statistics,
 )
 from llm_qualitative_sort.events import EventType, ProgressEvent
+
+# Type aliases for clarity
+WinnerType = Literal["A", "B"] | None
+OrderType = Literal["AB", "BA"]
+
+# Presentation orders for position bias mitigation
+PRESENTATION_ORDERS: tuple[OrderType, OrderType] = ("AB", "BA")
 
 
 class QualitativeSorter:
@@ -236,11 +243,10 @@ class QualitativeSorter:
 
         for i in range(self.comparison_rounds):
             # Alternate order to reduce position bias
-            if i % 2 == 0:
-                order = "AB"
+            order: OrderType = PRESENTATION_ORDERS[i % 2]
+            if order == "AB":
                 first, second = item_a, item_b
             else:
-                order = "BA"
                 first, second = item_b, item_a
 
             result, cached = await self._compare_with_cache(first, second, order)
@@ -325,7 +331,7 @@ class QualitativeSorter:
             if not isinstance(item, str):
                 raise TypeError(f"Item at index {i} is not a string: {type(item).__name__}")
 
-    def _translate_winner(self, winner: str | None, order: str) -> str | None:
+    def _translate_winner(self, winner: str | None, order: OrderType) -> WinnerType:
         """Translate winner from presentation order to original item order.
 
         Args:
@@ -339,7 +345,7 @@ class QualitativeSorter:
             return None
 
         if order == "AB":
-            return winner
+            return winner  # type: ignore[return-value]
         # order == "BA": swap A and B
         return "B" if winner == "A" else "A"
 

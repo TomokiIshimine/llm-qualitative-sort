@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 from llm_qualitative_sort.providers.base import LLMProvider
@@ -10,6 +11,14 @@ from llm_qualitative_sort.models import ComparisonResult, ComparisonResponse
 
 if TYPE_CHECKING:
     from langchain_core.language_models import BaseChatModel
+
+
+# Error type constants for categorization
+ERROR_TYPE_TIMEOUT = "timeout"
+ERROR_TYPE_CONNECTION = "connection"
+ERROR_TYPE_VALIDATION = "validation"
+ERROR_TYPE_API = "api_error"
+ERROR_TYPE_UNKNOWN = "unknown"
 
 
 class LangChainProvider(LLMProvider):
@@ -82,5 +91,12 @@ class LangChainProvider(LLMProvider):
                 raw_response=raw_response
             )
 
+        except asyncio.TimeoutError as e:
+            return create_error_result(e, ERROR_TYPE_TIMEOUT, "Request timed out")
+        except (ConnectionError, OSError) as e:
+            return create_error_result(e, ERROR_TYPE_CONNECTION, "Connection error")
+        except ValueError as e:
+            return create_error_result(e, ERROR_TYPE_VALIDATION, "Validation error")
         except Exception as e:
-            return create_error_result(e, type(e).__name__, str(e))
+            # Fallback for unexpected errors
+            return create_error_result(e, ERROR_TYPE_UNKNOWN, type(e).__name__)
