@@ -9,8 +9,7 @@ from llm_qualitative_sort.models import (
 )
 from llm_qualitative_sort.events import EventType, ProgressEvent
 from llm_qualitative_sort.providers.base import LLMProvider
-from llm_qualitative_sort.providers.openai import OpenAIProvider
-from llm_qualitative_sort.providers import get_google_provider
+from llm_qualitative_sort.providers.langchain import LangChainProvider
 from llm_qualitative_sort.providers.mock import MockLLMProvider
 from llm_qualitative_sort.cache import Cache, MemoryCache, FileCache
 from llm_qualitative_sort.sorter import QualitativeSorter
@@ -35,13 +34,6 @@ from llm_qualitative_sort.output import (
 )
 
 
-def __getattr__(name: str):
-    """Lazy loading for GoogleProvider to avoid import errors."""
-    if name == "GoogleProvider":
-        return get_google_provider()
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
 __all__ = [
     # Models
     "ComparisonResult",
@@ -54,10 +46,8 @@ __all__ = [
     "ProgressEvent",
     # Providers
     "LLMProvider",
-    "OpenAIProvider",
-    "GoogleProvider",
+    "LangChainProvider",
     "MockLLMProvider",
-    "get_google_provider",
     # Cache
     "Cache",
     "MemoryCache",
