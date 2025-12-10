@@ -1,38 +1,40 @@
 # llm-qualitative-sort
 
-LLMを用いた定性的ソーティングPythonパッケージ
+A Python package for qualitative sorting using LLMs
 
-## 概要
+[日本語版 README](README.ja.md)
 
-**llm-qualitative-sort**は、スイス式トーナメント方式を用いて、定量的に比較できない評価観点（文章の良さ、キャラクターの強さなど）に基づき、複数のテキストデータを順位付けするPythonパッケージです。
+## Overview
 
-LLMがペアごとに比較を行い、トーナメント形式で勝ち残りを決定することで、主観的な評価基準でも一貫した順位付けを実現します。
+**llm-qualitative-sort** is a Python package that ranks multiple text items based on qualitative criteria (such as writing quality, character strength, etc.) that cannot be quantitatively compared, using a Swiss-system tournament approach.
 
-## 特徴
+LLMs perform pairwise comparisons, and winners are determined through a tournament format, enabling consistent ranking even with subjective evaluation criteria.
 
-- **スイス式トーナメント**: N回負けで敗退する公平なトーナメント方式
-- **複数のLLMプロバイダー対応**: OpenAI、Google Gemini をサポート
-- **非同期処理**: asyncioによる効率的な並列比較
-- **位置バイアス軽減**: 比較順序を入れ替えて複数回比較
-- **キャッシュ機能**: メモリキャッシュ・ファイルキャッシュで重複呼び出しを削減
-- **進捗コールバック**: リアルタイムで進捗状況を取得可能
-- **拡張性**: 抽象基底クラスによるカスタムプロバイダー・キャッシュの実装が可能
+## Features
 
-## インストール
+- **Swiss-System Tournament**: Fair tournament format with elimination after N losses
+- **Multiple LLM Providers**: Supports OpenAI, Google Gemini, Anthropic Claude
+- **Async Processing**: Efficient parallel comparisons using asyncio
+- **Position Bias Mitigation**: Multiple comparisons with swapped order to reduce bias
+- **Caching**: Memory and file-based caching to reduce redundant API calls
+- **Progress Callbacks**: Real-time progress tracking
+- **Extensibility**: Custom providers and caches via abstract base classes
+
+## Installation
 
 ```bash
 pip install llm-qualitative-sort
 ```
 
-開発用依存関係を含めてインストール:
+Install with development dependencies:
 
 ```bash
 pip install llm-qualitative-sort[dev]
 ```
 
-## 使用方法
+## Usage
 
-### 基本的な使用例（OpenAI）
+### Basic Example (OpenAI)
 
 ```python
 import asyncio
@@ -40,43 +42,43 @@ from langchain_openai import ChatOpenAI
 from llm_qualitative_sort import QualitativeSorter, LangChainProvider
 
 async def main():
-    # LangChainモデルを設定
+    # Configure LangChain model
     llm = ChatOpenAI(model="gpt-5-nano", api_key="your-api-key")
     provider = LangChainProvider(llm=llm)
 
-    # ソーターを作成
+    # Create sorter
     sorter = QualitativeSorter(
         provider=provider,
-        criteria="文章の読みやすさと説得力",
-        elimination_count=2,  # 2回負けで敗退
-        comparison_rounds=2,  # 各マッチで2回比較（位置バイアス軽減）
+        criteria="Readability and persuasiveness of the text",
+        elimination_count=2,  # Eliminated after 2 losses
+        comparison_rounds=2,  # 2 comparisons per match (position bias mitigation)
     )
 
-    # ソート対象のアイテム
+    # Items to sort
     items = [
-        "短い文章は読みやすい。",
-        "詳細な説明を含む長い文章は、情報量が多く説得力がある。",
-        "適度な長さで要点を押さえた文章がベストである。",
+        "Short sentences are easy to read.",
+        "Long sentences with detailed explanations are informative and persuasive.",
+        "Sentences of moderate length that cover key points are best.",
     ]
 
-    # ソートを実行
+    # Execute sorting
     result = await sorter.sort(items)
 
-    # 結果を表示
-    print("ランキング:")
+    # Display results
+    print("Rankings:")
     for rank, tied_items in result.rankings:
         for item in tied_items:
-            print(f"  {rank}位: {item[:30]}...")
+            print(f"  Rank {rank}: {item[:30]}...")
 
-    print(f"\n統計:")
-    print(f"  総マッチ数: {result.statistics.total_matches}")
-    print(f"  API呼び出し数: {result.statistics.total_api_calls}")
-    print(f"  処理時間: {result.statistics.elapsed_time:.2f}秒")
+    print(f"\nStatistics:")
+    print(f"  Total matches: {result.statistics.total_matches}")
+    print(f"  API calls: {result.statistics.total_api_calls}")
+    print(f"  Elapsed time: {result.statistics.elapsed_time:.2f}s")
 
 asyncio.run(main())
 ```
 
-### Google Gemini を使用
+### Using Google Gemini
 
 ```python
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -87,11 +89,11 @@ provider = LangChainProvider(llm=llm)
 
 sorter = QualitativeSorter(
     provider=provider,
-    criteria="評価基準",
+    criteria="Your evaluation criteria",
 )
 ```
 
-### Anthropic Claude を使用
+### Using Anthropic Claude
 
 ```python
 from langchain_anthropic import ChatAnthropic
@@ -102,29 +104,29 @@ provider = LangChainProvider(llm=llm)
 
 sorter = QualitativeSorter(
     provider=provider,
-    criteria="評価基準",
+    criteria="Your evaluation criteria",
 )
 ```
 
-### キャッシュを使用
+### Using Cache
 
 ```python
-from llm_qualitative_sort import QualitativeSorter, OpenAIProvider, MemoryCache, FileCache
+from llm_qualitative_sort import QualitativeSorter, LangChainProvider, MemoryCache, FileCache
 
-# メモリキャッシュ
+# Memory cache
 memory_cache = MemoryCache()
 
-# ファイルキャッシュ（永続化）
+# File cache (persistent)
 file_cache = FileCache(cache_dir="./cache")
 
 sorter = QualitativeSorter(
     provider=provider,
-    criteria="評価基準",
-    cache=memory_cache,  # または file_cache
+    criteria="Your evaluation criteria",
+    cache=memory_cache,  # or file_cache
 )
 ```
 
-### 進捗コールバック
+### Progress Callbacks
 
 ```python
 from llm_qualitative_sort import QualitativeSorter, LangChainProvider, ProgressEvent
@@ -134,91 +136,91 @@ def on_progress(event: ProgressEvent):
 
 sorter = QualitativeSorter(
     provider=provider,
-    criteria="評価基準",
+    criteria="Your evaluation criteria",
     on_progress=on_progress,
 )
 ```
 
-## API リファレンス
+## API Reference
 
 ### QualitativeSorter
 
-メインのソートクラス。
+Main sorting class.
 
 ```python
 QualitativeSorter(
-    provider: LLMProvider,           # LLMプロバイダー（必須）
-    criteria: str,                   # 評価基準（必須）
-    elimination_count: int = 2,      # 敗退までの負け数
-    comparison_rounds: int = 2,      # マッチあたりの比較回数（偶数）
-    max_concurrent_requests: int = 10,  # 最大同時リクエスト数
-    cache: Cache | None = None,      # キャッシュ
-    on_progress: Callable | None = None,  # 進捗コールバック
-    seed: int | None = None,         # 乱数シード（再現性用）
+    provider: LLMProvider,           # LLM provider (required)
+    criteria: str,                   # Evaluation criteria (required)
+    elimination_count: int = 2,      # Losses before elimination
+    comparison_rounds: int = 2,      # Comparisons per match (even number)
+    max_concurrent_requests: int = 10,  # Max concurrent requests
+    cache: Cache | None = None,      # Cache
+    on_progress: Callable | None = None,  # Progress callback
+    seed: int | None = None,         # Random seed (for reproducibility)
 )
 ```
 
-**メソッド:**
+**Methods:**
 
-- `async sort(items: list[str]) -> SortResult`: アイテムをソート
+- `async sort(items: list[str]) -> SortResult`: Sort items
 
 ### SortResult
 
-ソート結果を格納するデータクラス。
+Data class for sort results.
 
 ```python
 @dataclass
 class SortResult:
-    rankings: list[tuple[int, list[str]]]  # (順位, [アイテム])のリスト
-    match_history: list[MatchResult]       # 全マッチの履歴
-    statistics: Statistics                  # 統計情報
+    rankings: list[tuple[int, list[str]]]  # List of (rank, [items])
+    match_history: list[MatchResult]       # History of all matches
+    statistics: Statistics                  # Statistics
 ```
 
-### LLMプロバイダー
+### LLM Providers
 
-| クラス | 説明 |
-|--------|------|
-| `LangChainProvider` | LangChain BaseChatModel を使用する汎用プロバイダー |
-| `MockLLMProvider` | テスト用モックプロバイダー |
+| Class | Description |
+|-------|-------------|
+| `LangChainProvider` | Generic provider using LangChain BaseChatModel |
+| `MockLLMProvider` | Mock provider for testing |
 
-`LangChainProvider` は以下のLangChainモデルをサポート:
+`LangChainProvider` supports the following LangChain models:
 - `langchain_openai.ChatOpenAI` (OpenAI)
 - `langchain_google_genai.ChatGoogleGenerativeAI` (Google Gemini)
 - `langchain_anthropic.ChatAnthropic` (Anthropic Claude)
-- その他 `with_structured_output()` をサポートするLangChainモデル
+- Other LangChain models that support `with_structured_output()`
 
-### キャッシュ
+### Cache
 
-| キャッシュ | クラス | 説明 |
-|-----------|--------|------|
-| メモリ | `MemoryCache` | インメモリキャッシュ |
-| ファイル | `FileCache` | ファイルベースの永続化キャッシュ |
+| Cache | Class | Description |
+|-------|-------|-------------|
+| Memory | `MemoryCache` | In-memory cache |
+| File | `FileCache` | File-based persistent cache |
 
-### 出力フォーマッター
+### Output Formatters
 
-ソート結果を様々な形式に変換できます。
+Convert sort results to various formats.
 
 ```python
 from llm_qualitative_sort import to_sorting, to_ranking, to_percentile
 
-# シンプルなソート済みリスト
+# Simple sorted list
 sorting_output = to_sorting(result)
-print(sorting_output.items)  # ["1位のアイテム", "2位のアイテム", ...]
+print(sorting_output.items)  # ["1st place item", "2nd place item", ...]
 
-# 詳細なランキング（勝利数、同順位情報付き）
+# Detailed ranking (with win count, tie information)
 ranking_output = to_ranking(result)
 for entry in ranking_output.entries:
-    print(f"{entry.rank}位: {entry.item} (勝利数: {entry.wins})")
+    print(f"Rank {entry.rank}: {entry.item} (wins: {entry.wins})")
 
-# パーセンタイル（ティア分類付き）
+# Percentile (with tier classification)
 percentile_output = to_percentile(result)
 for entry in percentile_output.entries:
     print(f"{entry.item}: {entry.percentile:.0f}% ({entry.tier})")
 ```
 
-### 精度評価メトリクス
+### Accuracy Metrics
 
-期待値と比較してソート精度を評価できます。
+Evaluate sorting accuracy against expected values.
 
 ```python
 from llm_qualitative_sort import (
@@ -227,115 +229,115 @@ from llm_qualitative_sort import (
     calculate_all_metrics,
 )
 
-# ランキングをフラットなリストに変換
+# Convert rankings to flat list
 actual = flatten_rankings(result.rankings)
-expected = ["期待1位", "期待2位", "期待3位"]
+expected = ["expected 1st", "expected 2nd", "expected 3rd"]
 
-# Kendall's tau 相関係数 (-1〜1、1が完全一致)
+# Kendall's tau correlation coefficient (-1 to 1, 1 is perfect match)
 tau = calculate_kendall_tau(actual, expected)
 
-# 全メトリクスを一括計算
+# Calculate all metrics at once
 metrics = calculate_all_metrics(actual, expected)
 print(f"Kendall's tau: {metrics.kendall_tau:.3f}")
-print(f"Top-10 正解率: {metrics.top_10_accuracy:.1%}")
-print(f"ペア正解率: {metrics.correct_pair_ratio:.1%}")
+print(f"Top-10 accuracy: {metrics.top_10_accuracy:.1%}")
+print(f"Pairwise accuracy: {metrics.correct_pair_ratio:.1%}")
 ```
 
-## プロジェクト構造
+## Project Structure
 
 ```
 src/llm_qualitative_sort/
-├── __init__.py           # パブリックAPI
-├── models.py             # データ構造（dataclass）
-├── events.py             # イベント定義
-├── sorter.py             # メインクラス
-├── metrics.py            # 精度評価メトリクス
-├── utils.py              # ユーティリティ関数
-├── providers/            # LLMプロバイダー
+├── __init__.py           # Public API
+├── models.py             # Data structures (dataclass)
+├── events.py             # Event definitions
+├── sorter.py             # Main class
+├── metrics.py            # Accuracy metrics
+├── utils.py              # Utility functions
+├── providers/            # LLM providers
 │   ├── __init__.py
-│   ├── base.py           # 抽象基底クラス（LLMProvider）
-│   ├── langchain.py      # LangChain統合プロバイダー
-│   ├── mock.py           # テスト用
-│   └── errors.py         # エラーハンドリング
-├── tournament/           # トーナメント処理
+│   ├── base.py           # Abstract base class (LLMProvider)
+│   ├── langchain.py      # LangChain integration provider
+│   ├── mock.py           # For testing
+│   └── errors.py         # Error handling
+├── tournament/           # Tournament processing
 │   ├── __init__.py
 │   └── swiss_system.py
-├── output/               # 出力フォーマッター
+├── output/               # Output formatters
 │   ├── __init__.py
-│   ├── models.py         # 出力用データ構造
-│   ├── calculators.py    # 計算ロジック
-│   └── formatters.py     # フォーマット変換
-└── cache/                # キャッシュ機能
+│   ├── models.py         # Output data structures
+│   ├── calculators.py    # Calculation logic
+│   └── formatters.py     # Format conversion
+└── cache/                # Caching
     └── __init__.py       # Cache, MemoryCache, FileCache
 ```
 
-## 動作原理
+## How It Works
 
-### スイス式トーナメント
+### Swiss-System Tournament
 
-1. 全参加者が0敗の状態でスタート
-2. 同じ敗数のグループ（ブラケット）内でランダムにペアを組む
-3. LLMが指定された評価基準でペア比較を実施
-4. 敗者の敗数をインクリメント
-5. N敗（デフォルト2敗）で敗退
-6. 最後の1人が残るまで繰り返し
-7. 勝利数に基づいてランキングを決定
+1. All participants start with 0 losses
+2. Participants with the same number of losses (bracket) are randomly paired
+3. LLM performs pairwise comparison based on specified criteria
+4. Loser's loss count is incremented
+5. Eliminated after N losses (default: 2)
+6. Repeat until one participant remains
+7. Rankings determined by win count
 
-### 位置バイアス軽減
+### Position Bias Mitigation
 
-LLMには「先に提示されたものを選びやすい」などの位置バイアスがあります。これを軽減するため、各マッチで提示順序を入れ替えて複数回比較を行い、多数決で勝者を決定します。
+LLMs have position biases such as preferring items presented first. To mitigate this, each match performs multiple comparisons with swapped presentation order, and the winner is determined by majority vote.
 
-## 開発環境セットアップ
+## Development Setup
 
-### 環境構築
+### Environment Setup
 
 ```bash
-# リポジトリをクローン
+# Clone repository
 git clone https://github.com/TomokiIshimine/llm-qualitative-sort.git
 cd llm-qualitative-sort
 
-# 開発モードでインストール（開発用依存関係を含む）
+# Install in development mode (includes dev dependencies)
 pip install -e ".[dev]"
 
-# テスト実行で動作確認
+# Verify with tests
 python -m pytest tests/ -v
 ```
 
-### 開発用依存関係
+### Development Dependencies
 
-- `pytest>=7.0.0` - テストフレームワーク
-- `pytest-asyncio>=0.21.0` - 非同期テストサポート
-- `scipy>=1.10.0` - 統計処理
+- `pytest>=7.0.0` - Testing framework
+- `pytest-asyncio>=0.21.0` - Async test support
+- `scipy>=1.10.0` - Statistical processing
 
-### テストコマンド
+### Test Commands
 
 ```bash
-# 全テスト実行
+# Run all tests
 python -m pytest tests/ -v
 
-# 特定のテストファイル
+# Specific test file
 python -m pytest tests/test_sorter.py -v
 
-# 特定のテストクラス
+# Specific test class
 python -m pytest tests/test_sorter.py::TestQualitativeSorterSort -v
 
-# カバレッジ付き
+# With coverage
 python -m pytest tests/ --cov=src/llm_qualitative_sort
 ```
 
-### 開発方針
+### Development Philosophy
 
-このプロジェクトではテスト駆動開発（TDD）を採用しています：
+This project follows Test-Driven Development (TDD):
 
-1. **Red**: 失敗するテストを先に書く
-2. **Green**: テストをパスする最小限のコードを実装
-3. **Refactor**: コードを改善（テストは常にパス状態を維持）
+1. **Red**: Write a failing test first
+2. **Green**: Implement minimal code to pass the test
+3. **Refactor**: Improve code (keeping tests passing)
 
-## 必要要件
+## Requirements
 
 - Python >= 3.10
 - aiohttp >= 3.8.0
 
-## ライセンス
+## License
 
 MIT License
