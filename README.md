@@ -11,7 +11,7 @@ LLMがペアごとに比較を行い、トーナメント形式で勝ち残り�
 ## 特徴
 
 - **マルチイリミネーショントーナメント**: N回負けで敗退する公平なトーナメント方式
-- **複数のLLMプロバイダー対応**: OpenAI、Google Gemini をサポート
+- **複数のLLMプロバイダー対応**: OpenAI、Google Gemini、LangChain（任意のLLM）をサポート
 - **非同期処理**: asyncioによる効率的な並列比較
 - **位置バイアス軽減**: 比較順序を入れ替えて複数回比較
 - **キャッシュ機能**: メモリキャッシュ・ファイルキャッシュで重複呼び出しを削減
@@ -93,6 +93,52 @@ sorter = QualitativeSorter(
 )
 ```
 
+### LangChain を使用
+
+LangChainを使用すると、OpenAI、Anthropic、Ollama、Azure OpenAI、AWS Bedrockなど、LangChainがサポートする任意のLLMを利用できます。
+
+```python
+from llm_qualitative_sort import QualitativeSorter, LangChainProvider
+
+# ChatOpenAI を使用
+from langchain_openai import ChatOpenAI
+
+chat_model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+provider = LangChainProvider(chat_model=chat_model)
+
+sorter = QualitativeSorter(
+    provider=provider,
+    criteria="評価基準",
+)
+```
+
+```python
+# ChatAnthropic を使用
+from langchain_anthropic import ChatAnthropic
+
+chat_model = ChatAnthropic(model="claude-sonnet-4-20250514", temperature=0)
+provider = LangChainProvider(chat_model=chat_model)
+```
+
+```python
+# ChatOllama を使用（ローカルLLM）
+from langchain_ollama import ChatOllama
+
+chat_model = ChatOllama(model="llama3.2")
+provider = LangChainProvider(chat_model=chat_model)
+```
+
+```python
+# Azure OpenAI を使用
+from langchain_openai import AzureChatOpenAI
+
+chat_model = AzureChatOpenAI(
+    azure_deployment="your-deployment-name",
+    api_version="2024-02-01",
+)
+provider = LangChainProvider(chat_model=chat_model)
+```
+
 ### キャッシュを使用
 
 ```python
@@ -167,6 +213,7 @@ class SortResult:
 |-------------|--------|-----------------|
 | OpenAI | `OpenAIProvider` | `gpt-4o` |
 | Google | `GoogleProvider` | `gemini-1.5-flash` |
+| LangChain | `LangChainProvider` | （任意のLangChainモデル） |
 | テスト用 | `MockLLMProvider` | - |
 
 ### キャッシュ
@@ -188,6 +235,7 @@ src/llm_qualitative_sort/
 │   ├── base.py           # 抽象基底クラス
 │   ├── openai.py
 │   ├── google.py
+│   ├── langchain.py      # LangChain統合
 │   └── mock.py           # テスト用
 ├── tournament/           # トーナメント処理
 │   └── multi_elimination.py
