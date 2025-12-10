@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from llm_qualitative_sort.providers.base import LLMProvider
 from llm_qualitative_sort.providers.openai import OpenAIProvider
 from llm_qualitative_sort.providers.mock import MockLLMProvider
+from llm_qualitative_sort.providers.langchain import LangChainProvider
 
 if TYPE_CHECKING:
     from llm_qualitative_sort.providers.google import GoogleProvider
@@ -30,4 +31,5 @@ __all__ = [
     "OpenAIProvider",
     "get_google_provider",
     "MockLLMProvider",
+    "LangChainProvider",
 ]

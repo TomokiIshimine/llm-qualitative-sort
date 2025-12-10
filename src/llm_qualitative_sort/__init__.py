@@ -12,6 +12,7 @@ from llm_qualitative_sort.providers.base import LLMProvider
 from llm_qualitative_sort.providers.openai import OpenAIProvider
 from llm_qualitative_sort.providers import get_google_provider
 from llm_qualitative_sort.providers.mock import MockLLMProvider
+from llm_qualitative_sort.providers.langchain import LangChainProvider
 from llm_qualitative_sort.cache import Cache, MemoryCache, FileCache
 from llm_qualitative_sort.sorter import QualitativeSorter
 from llm_qualitative_sort.metrics import (
@@ -57,6 +58,7 @@ __all__ = [
     "OpenAIProvider",
     "GoogleProvider",
     "MockLLMProvider",
+    "LangChainProvider",
     "get_google_provider",
     # Cache
     "Cache",
