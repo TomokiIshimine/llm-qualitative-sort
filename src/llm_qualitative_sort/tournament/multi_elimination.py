@@ -3,6 +3,8 @@
 import random
 from dataclasses import dataclass
 
+from llm_qualitative_sort.utils import group_by
+
 
 @dataclass
 class Participant:
@@ -123,12 +125,7 @@ class MultiEliminationTournament:
         Returns:
             Dictionary mapping loss count to list of participants
         """
-        brackets: dict[int, list[Participant]] = {}
-        for p in participants:
-            if p.losses not in brackets:
-                brackets[p.losses] = []
-            brackets[p.losses].append(p)
-        return brackets
+        return group_by(participants, lambda p: p.losses)
 
     def _create_matches_from_brackets(
         self, brackets: dict[int, list[Participant]]
@@ -146,22 +143,28 @@ class MultiEliminationTournament:
             List of (item_a, item_b) match tuples
         """
         matches: list[tuple[str, str]] = []
+        used_participants: set[str] = set()
 
         for loss_count in sorted(brackets.keys()):
-            bracket = brackets[loss_count]
+            bracket = [p for p in brackets[loss_count] if p.item not in used_participants]
             self._rng.shuffle(bracket)
 
             # Pair up participants within bracket
             paired_matches = self._pair_within_bracket(bracket)
             matches.extend(paired_matches)
+            for p1_item, p2_item in paired_matches:
+                used_participants.add(p1_item)
+                used_participants.add(p2_item)
 
             # Handle odd participant by matching with next bracket
             if len(bracket) % 2 == 1:
                 cross_match = self._match_odd_participant(
-                    bracket[-1], loss_count, brackets
+                    bracket[-1], loss_count, brackets, used_participants
                 )
                 if cross_match:
                     matches.append(cross_match)
+                    used_participants.add(cross_match[0])
+                    used_participants.add(cross_match[1])
 
         return matches
 
@@ -186,7 +189,8 @@ class MultiEliminationTournament:
         self,
         remaining: Participant,
         current_loss_count: int,
-        brackets: dict[int, list[Participant]]
+        brackets: dict[int, list[Participant]],
+        used_participants: set[str]
     ) -> tuple[str, str] | None:
         """Try to match an odd participant with someone from the next bracket.
 
@@ -194,6 +198,7 @@ class MultiEliminationTournament:
             remaining: The participant without a pair
             current_loss_count: The loss count of the current bracket
             brackets: All loss brackets
+            used_participants: Set of participant items already matched
 
         Returns:
             Match tuple if an opponent was found, None otherwise
@@ -202,11 +207,15 @@ class MultiEliminationTournament:
         if next_loss_count not in brackets:
             return None
 
-        next_bracket = brackets[next_loss_count]
-        if not next_bracket:
+        # Find an available opponent from the next bracket
+        available = [
+            p for p in brackets[next_loss_count]
+            if p.item not in used_participants
+        ]
+        if not available:
             return None
 
-        opponent = next_bracket.pop()
+        opponent = available[-1]
         return (remaining.item, opponent.item)
 
     def is_complete(self) -> bool:
@@ -224,21 +233,18 @@ class MultiEliminationTournament:
         Returns list of (rank, [items]) tuples.
         Items with same win count share the same rank.
         """
-        # Group by wins
-        by_wins: dict[int, list[str]] = {}
-        for p in self.participants.values():
-            if p.wins not in by_wins:
-                by_wins[p.wins] = []
-            by_wins[p.wins].append(p.item)
+        by_wins = group_by(
+            list(self.participants.values()),
+            lambda p: p.wins
+        )
 
-        # Sort by wins descending
+        # Sort by wins descending and build rankings
         sorted_wins = sorted(by_wins.keys(), reverse=True)
-
-        rankings = []
+        rankings: list[tuple[int, list[str]]] = []
         current_rank = 1
 
         for wins in sorted_wins:
-            items = by_wins[wins]
+            items = [p.item for p in by_wins[wins]]
             rankings.append((current_rank, items))
             current_rank += len(items)
 
