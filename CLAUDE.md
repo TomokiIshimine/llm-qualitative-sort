@@ -45,17 +45,24 @@ src/llm_qualitative_sort/
 ├── models.py             # データ構造（dataclass）
 ├── events.py             # イベント定義
 ├── sorter.py             # メインクラス
+├── metrics.py            # 精度評価メトリクス
+├── utils.py              # ユーティリティ関数
 ├── providers/            # LLMプロバイダー
-│   ├── base.py           # 抽象基底クラス
-│   ├── openai.py
-│   ├── google.py
-│   └── mock.py           # テスト用
+│   ├── __init__.py
+│   ├── base.py           # 抽象基底クラス（LLMProvider）
+│   ├── langchain.py      # LangChain統合プロバイダー
+│   ├── mock.py           # テスト用
+│   └── errors.py         # エラーハンドリング
 ├── tournament/           # トーナメント処理
+│   ├── __init__.py
 │   └── swiss_system.py
+├── output/               # 出力フォーマッター
+│   ├── __init__.py
+│   ├── models.py         # 出力用データ構造
+│   ├── calculators.py    # 計算ロジック
+│   └── formatters.py     # フォーマット変換
 └── cache/                # キャッシュ機能
-    ├── base.py           # 抽象基底クラス
-    ├── memory.py
-    └── file.py
+    └── __init__.py       # Cache, MemoryCache, FileCache
 
 tests/                    # テストファイル（対応するsrcと同じ構造）
 ```
