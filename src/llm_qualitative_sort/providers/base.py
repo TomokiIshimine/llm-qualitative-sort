@@ -8,21 +8,16 @@ from llm_qualitative_sort.models import ComparisonResult
 class LLMProvider(ABC):
     """Abstract base class for LLM providers.
 
-    Attributes:
-        api_key: API key for the provider
-        base_url: Base URL for the API endpoint
-        model: Model name to use
+    This class provides a common interface for all LLM providers.
+    Subclasses can implement their own initialization logic.
     """
 
-    def __init__(
-        self,
-        api_key: str,
-        base_url: str | None = None,
-        model: str = "default",
-    ) -> None:
-        self.api_key = api_key
-        self.base_url = base_url
-        self.model = model
+    def __init__(self) -> None:
+        """Initialize the provider.
+
+        Subclasses should override this with their specific initialization.
+        """
+        pass
 
     @abstractmethod
     async def compare(

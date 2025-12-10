@@ -30,7 +30,7 @@ class MockLLMProvider(LLMProvider):
         seed: int | None = None,
         noise_stddev: float = DEFAULT_MOCK_NOISE_STDDEV,
     ) -> None:
-        super().__init__(api_key="mock", base_url=None, model="mock")
+        super().__init__()
         self.seed = seed
         self.noise_stddev = noise_stddev
         self._rng = random.Random(seed)
