@@ -84,45 +84,45 @@ class QualitativeSorter:
             seed=self.seed,
         )
 
+        match_history, total_matches = await self._execute_tournament(tournament, items)
+
+        return SortResult(
+            rankings=tournament.get_rankings(),
+            match_history=match_history,
+            statistics=self._create_statistics(total_matches, start_time)
+        )
+
+    async def _execute_tournament(
+        self,
+        tournament: MultiEliminationTournament,
+        items: list[str]
+    ) -> tuple[list[MatchResult], int]:
+        """Execute all tournament rounds until completion.
+
+        Args:
+            tournament: The tournament instance to execute
+            items: List of items being sorted
+
+        Returns:
+            Tuple of (match_history, total_matches)
+        """
         match_history: list[MatchResult] = []
         total_matches = 0
         completed_matches = 0
-
-        # Estimate total matches
-        n = len(items)
-        estimated_matches = self.elimination_count * n - self.elimination_count
+        estimated_matches = self._estimate_total_matches(len(items))
 
         while not tournament.is_complete():
             matches = tournament.get_next_matches()
-
             if not matches:
                 break
 
-            # Run matches concurrently
-            tasks = []
-            for item_a, item_b in matches:
-                self._emit_progress(
-                    EventType.MATCH_START,
-                    f"Starting match: {item_a} vs {item_b}",
-                    completed_matches,
-                    estimated_matches,
-                    {"item_a": item_a, "item_b": item_b}
-                )
-                tasks.append(self._run_match(item_a, item_b))
-
-            results = await asyncio.gather(*tasks)
+            results = await self._run_round_matches(
+                matches, completed_matches, estimated_matches
+            )
 
             for (item_a, item_b), match_result in zip(matches, results):
                 match_history.append(match_result)
-
-                # Determine winner
-                if match_result.winner == "A":
-                    winner = item_a
-                elif match_result.winner == "B":
-                    winner = item_b
-                else:
-                    winner = None
-
+                winner = self._determine_winner(item_a, item_b, match_result)
                 tournament.record_match_result(item_a, item_b, winner)
                 completed_matches += 1
                 total_matches += 1
@@ -137,25 +137,91 @@ class QualitativeSorter:
 
             self._emit_progress(
                 EventType.ROUND_END,
-                f"Round complete",
+                "Round complete",
                 completed_matches,
                 estimated_matches,
                 None
             )
 
-        elapsed_time = time.time() - start_time
+        return match_history, total_matches
 
-        statistics = Statistics(
+    async def _run_round_matches(
+        self,
+        matches: list[tuple[str, str]],
+        completed_matches: int,
+        estimated_matches: int
+    ) -> list[MatchResult]:
+        """Run all matches in a single round concurrently.
+
+        Args:
+            matches: List of (item_a, item_b) tuples to compare
+            completed_matches: Number of matches completed so far
+            estimated_matches: Estimated total matches
+
+        Returns:
+            List of MatchResult objects
+        """
+        tasks = []
+        for item_a, item_b in matches:
+            self._emit_progress(
+                EventType.MATCH_START,
+                f"Starting match: {item_a} vs {item_b}",
+                completed_matches,
+                estimated_matches,
+                {"item_a": item_a, "item_b": item_b}
+            )
+            tasks.append(self._run_match(item_a, item_b))
+
+        return await asyncio.gather(*tasks)
+
+    def _estimate_total_matches(self, item_count: int) -> int:
+        """Estimate the total number of matches in the tournament.
+
+        Args:
+            item_count: Number of items in the tournament
+
+        Returns:
+            Estimated number of matches
+        """
+        return self.elimination_count * item_count - self.elimination_count
+
+    def _determine_winner(
+        self,
+        item_a: str,
+        item_b: str,
+        match_result: MatchResult
+    ) -> str | None:
+        """Determine the actual winner item from a match result.
+
+        Args:
+            item_a: First item in the match
+            item_b: Second item in the match
+            match_result: Result of the match
+
+        Returns:
+            The winning item string, or None for a draw
+        """
+        if match_result.winner == "A":
+            return item_a
+        elif match_result.winner == "B":
+            return item_b
+        return None
+
+    def _create_statistics(self, total_matches: int, start_time: float) -> Statistics:
+        """Create statistics for the completed sort.
+
+        Args:
+            total_matches: Total number of matches executed
+            start_time: Timestamp when sorting started
+
+        Returns:
+            Statistics object with sort metrics
+        """
+        return Statistics(
             total_matches=total_matches,
             total_api_calls=self._total_api_calls,
             cache_hits=self._cache_hits,
-            elapsed_time=elapsed_time
-        )
-
-        return SortResult(
-            rankings=tournament.get_rankings(),
-            match_history=match_history,
-            statistics=statistics
+            elapsed_time=time.time() - start_time
         )
 
     async def _run_match(self, item_a: str, item_b: str) -> MatchResult:
