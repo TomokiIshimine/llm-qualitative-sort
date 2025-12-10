@@ -33,7 +33,7 @@ class LangChainProvider(LLMProvider):
 
         # OpenAI
         from langchain_openai import ChatOpenAI
-        llm = ChatOpenAI(model="gpt-4o-mini", api_key="...")
+        llm = ChatOpenAI(model="gpt-5-nano", api_key="...")
         provider = LangChainProvider(llm=llm)
 
         # Anthropic
@@ -43,7 +43,7 @@ class LangChainProvider(LLMProvider):
 
         # Google
         from langchain_google_genai import ChatGoogleGenerativeAI
-        llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", api_key="...")
+        llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key="...")
         provider = LangChainProvider(llm=llm)
 
     Args:

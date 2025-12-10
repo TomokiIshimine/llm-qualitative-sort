@@ -32,18 +32,17 @@ pip install llm-qualitative-sort[dev]
 
 ## 使用方法
 
-### 基本的な使用例
+### 基本的な使用例（OpenAI）
 
 ```python
 import asyncio
-from llm_qualitative_sort import QualitativeSorter, OpenAIProvider
+from langchain_openai import ChatOpenAI
+from llm_qualitative_sort import QualitativeSorter, LangChainProvider
 
 async def main():
-    # プロバイダーを設定
-    provider = OpenAIProvider(
-        api_key="your-api-key",
-        model="gpt-4o"  # デフォルト
-    )
+    # LangChainモデルを設定
+    llm = ChatOpenAI(model="gpt-5-nano", api_key="your-api-key")
+    provider = LangChainProvider(llm=llm)
 
     # ソーターを作成
     sorter = QualitativeSorter(
@@ -80,12 +79,26 @@ asyncio.run(main())
 ### Google Gemini を使用
 
 ```python
-from llm_qualitative_sort import QualitativeSorter, GoogleProvider
+from langchain_google_genai import ChatGoogleGenerativeAI
+from llm_qualitative_sort import QualitativeSorter, LangChainProvider
 
-provider = GoogleProvider(
-    api_key="your-google-api-key",
-    model="gemini-1.5-flash"  # デフォルト
+llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", api_key="your-google-api-key")
+provider = LangChainProvider(llm=llm)
+
+sorter = QualitativeSorter(
+    provider=provider,
+    criteria="評価基準",
 )
+```
+
+### Anthropic Claude を使用
+
+```python
+from langchain_anthropic import ChatAnthropic
+from llm_qualitative_sort import QualitativeSorter, LangChainProvider
+
+llm = ChatAnthropic(model="claude-sonnet-4-20250514", api_key="your-anthropic-api-key")
+provider = LangChainProvider(llm=llm)
 
 sorter = QualitativeSorter(
     provider=provider,
@@ -114,7 +127,7 @@ sorter = QualitativeSorter(
 ### 進捗コールバック
 
 ```python
-from llm_qualitative_sort import QualitativeSorter, OpenAIProvider, ProgressEvent
+from llm_qualitative_sort import QualitativeSorter, LangChainProvider, ProgressEvent
 
 def on_progress(event: ProgressEvent):
     print(f"[{event.type.name}] {event.message} ({event.completed}/{event.total})")
@@ -163,11 +176,16 @@ class SortResult:
 
 ### LLMプロバイダー
 
-| プロバイダー | クラス | デフォルトモデル |
-|-------------|--------|-----------------|
-| OpenAI | `OpenAIProvider` | `gpt-4o` |
-| Google | `GoogleProvider` | `gemini-1.5-flash` |
-| テスト用 | `MockLLMProvider` | - |
+| クラス | 説明 |
+|--------|------|
+| `LangChainProvider` | LangChain BaseChatModel を使用する汎用プロバイダー |
+| `MockLLMProvider` | テスト用モックプロバイダー |
+
+`LangChainProvider` は以下のLangChainモデルをサポート:
+- `langchain_openai.ChatOpenAI` (OpenAI)
+- `langchain_google_genai.ChatGoogleGenerativeAI` (Google Gemini)
+- `langchain_anthropic.ChatAnthropic` (Anthropic Claude)
+- その他 `with_structured_output()` をサポートするLangChainモデル
 
 ### キャッシュ
 
@@ -175,6 +193,53 @@ class SortResult:
 |-----------|--------|------|
 | メモリ | `MemoryCache` | インメモリキャッシュ |
 | ファイル | `FileCache` | ファイルベースの永続化キャッシュ |
+
+### 出力フォーマッター
+
+ソート結果を様々な形式に変換できます。
+
+```python
+from llm_qualitative_sort import to_sorting, to_ranking, to_percentile
+
+# シンプルなソート済みリスト
+sorting_output = to_sorting(result)
+print(sorting_output.items)  # ["1位のアイテム", "2位のアイテム", ...]
+
+# 詳細なランキング（勝利数、同順位情報付き）
+ranking_output = to_ranking(result)
+for entry in ranking_output.entries:
+    print(f"{entry.rank}位: {entry.item} (勝利数: {entry.wins})")
+
+# パーセンタイル（ティア分類付き）
+percentile_output = to_percentile(result)
+for entry in percentile_output.entries:
+    print(f"{entry.item}: {entry.percentile:.0f}% ({entry.tier})")
+```
+
+### 精度評価メトリクス
+
+期待値と比較してソート精度を評価できます。
+
+```python
+from llm_qualitative_sort import (
+    flatten_rankings,
+    calculate_kendall_tau,
+    calculate_all_metrics,
+)
+
+# ランキングをフラットなリストに変換
+actual = flatten_rankings(result.rankings)
+expected = ["期待1位", "期待2位", "期待3位"]
+
+# Kendall's tau 相関係数 (-1〜1、1が完全一致)
+tau = calculate_kendall_tau(actual, expected)
+
+# 全メトリクスを一括計算
+metrics = calculate_all_metrics(actual, expected)
+print(f"Kendall's tau: {metrics.kendall_tau:.3f}")
+print(f"Top-10 正解率: {metrics.top_10_accuracy:.1%}")
+print(f"ペア正解率: {metrics.correct_pair_ratio:.1%}")
+```
 
 ## プロジェクト構造
 
@@ -184,17 +249,24 @@ src/llm_qualitative_sort/
 ├── models.py             # データ構造（dataclass）
 ├── events.py             # イベント定義
 ├── sorter.py             # メインクラス
+├── metrics.py            # 精度評価メトリクス
+├── utils.py              # ユーティリティ関数
 ├── providers/            # LLMプロバイダー
-│   ├── base.py           # 抽象基底クラス
-│   ├── openai.py
-│   ├── google.py
-│   └── mock.py           # テスト用
+│   ├── __init__.py
+│   ├── base.py           # 抽象基底クラス（LLMProvider）
+│   ├── langchain.py      # LangChain統合プロバイダー
+│   ├── mock.py           # テスト用
+│   └── errors.py         # エラーハンドリング
 ├── tournament/           # トーナメント処理
+│   ├── __init__.py
 │   └── swiss_system.py
+├── output/               # 出力フォーマッター
+│   ├── __init__.py
+│   ├── models.py         # 出力用データ構造
+│   ├── calculators.py    # 計算ロジック
+│   └── formatters.py     # フォーマット変換
 └── cache/                # キャッシュ機能
-    ├── base.py           # 抽象基底クラス
-    ├── memory.py
-    └── file.py
+    └── __init__.py       # Cache, MemoryCache, FileCache
 ```
 
 ## 動作原理
