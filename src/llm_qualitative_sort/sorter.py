@@ -6,7 +6,7 @@ from typing import Callable, Literal
 
 from llm_qualitative_sort.providers.base import LLMProvider
 from llm_qualitative_sort.cache import Cache
-from llm_qualitative_sort.tournament.multi_elimination import MultiEliminationTournament
+from llm_qualitative_sort.tournament.swiss_system import SwissSystemTournament
 from llm_qualitative_sort.models import (
     ComparisonResult,
     RoundResult,
@@ -27,7 +27,7 @@ PRESENTATION_ORDERS: tuple[OrderType, OrderType] = ("AB", "BA")
 class QualitativeSorter:
     """Main class for qualitative sorting using LLM comparisons.
 
-    Uses multi-elimination tournament to rank items based on
+    Uses Swiss-system tournament to rank items based on
     qualitative criteria evaluated by an LLM.
 
     Attributes:
@@ -68,7 +68,7 @@ class QualitativeSorter:
         self._cache_hits = 0
 
     async def sort(self, items: list[str]) -> SortResult:
-        """Sort items using multi-elimination tournament.
+        """Sort items using Swiss-system tournament.
 
         Args:
             items: List of items to sort
@@ -85,7 +85,7 @@ class QualitativeSorter:
         self._total_api_calls = 0
         self._cache_hits = 0
 
-        tournament = MultiEliminationTournament(
+        tournament = SwissSystemTournament(
             items=items,
             elimination_count=self.elimination_count,
             seed=self.seed,
@@ -101,7 +101,7 @@ class QualitativeSorter:
 
     async def _execute_tournament(
         self,
-        tournament: MultiEliminationTournament,
+        tournament: SwissSystemTournament,
         items: list[str]
     ) -> tuple[list[MatchResult], int]:
         """Execute all tournament rounds until completion.

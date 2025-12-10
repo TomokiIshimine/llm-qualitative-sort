@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "llm-qualitative-sort"
 version = "0.1.0"
-description = "LLM-based qualitative sorting using multi-elimination tournament"
+description = "LLM-based qualitative sorting using Swiss-system tournament"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}

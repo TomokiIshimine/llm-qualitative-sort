@@ -4,7 +4,7 @@
 
 **llm-qualitative-sort** は、LLM（大規模言語モデル）を用いて定性的な基準でテキストデータをソートするPythonパッケージです。
 
-マルチイリミネーショントーナメント方式を採用し、「文章の良さ」「キャラクターの強さ」など、定量的に比較できない評価観点に基づいて複数の項目を順位付けします。
+スイス式トーナメント方式を採用し、「文章の良さ」「キャラクターの強さ」など、定量的に比較できない評価観点に基づいて複数の項目を順位付けします。
 
 ## システムアーキテクチャ
 
@@ -19,7 +19,7 @@ graph TB
     end
 
     subgraph "Tournament Layer"
-        Tournament[MultiEliminationTournament<br/>トーナメント管理]
+        Tournament[SwissSystemTournament<br/>トーナメント管理]
         Participant[Participant<br/>参加者管理]
     end
 
@@ -75,7 +75,7 @@ classDiagram
         -_compare_with_cache(first, second, order) tuple
     }
 
-    class MultiEliminationTournament {
+    class SwissSystemTournament {
         -dict participants
         -int elimination_count
         -set _match_history
@@ -112,8 +112,8 @@ classDiagram
 
     QualitativeSorter --> LLMProvider
     QualitativeSorter --> Cache
-    QualitativeSorter --> MultiEliminationTournament
-    MultiEliminationTournament --> Participant
+    QualitativeSorter --> SwissSystemTournament
+    SwissSystemTournament --> Participant
     LangChainProvider --|> LLMProvider
 ```
 
@@ -161,9 +161,9 @@ flowchart TD
 - 進捗イベントの発行
 - 結果の集計
 
-### 2. MultiEliminationTournament
+### 2. SwissSystemTournament
 
-マルチイリミネーション方式のトーナメントロジックを実装します。
+スイス式トーナメントのロジックを実装します。
 
 **責務:**
 - 参加者の管理（勝敗記録）
@@ -233,7 +233,7 @@ src/llm_qualitative_sort/
 │   ├── mock.py             # テスト用
 │   └── errors.py           # エラーハンドリング
 ├── tournament/              # トーナメント処理
-│   └── multi_elimination.py
+│   └── swiss_system.py
 ├── cache/                   # キャッシュ機能
 │   └── __init__.py
 └── output/                  # 出力フォーマット
