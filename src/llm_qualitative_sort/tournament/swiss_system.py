@@ -1,4 +1,4 @@
-"""Multi-elimination tournament implementation."""
+"""Swiss-system tournament implementation."""
 
 import random
 from dataclasses import dataclass
@@ -24,12 +24,11 @@ class Participant:
         return self.losses >= elimination_count
 
 
-class MultiEliminationTournament:
-    """Multi-elimination tournament manager.
+class SwissSystemTournament:
+    """Swiss-system tournament manager.
 
-    Implements a simplified multi-elimination tournament where
-    participants are eliminated after N losses. Rankings are
-    determined by win count.
+    Implements a Swiss-system tournament where participants are
+    eliminated after N losses. Rankings are determined by win count.
 
     Attributes:
         elimination_count: Number of losses before elimination

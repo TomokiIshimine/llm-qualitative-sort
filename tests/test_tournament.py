@@ -1,8 +1,8 @@
-"""Tests for multi-elimination tournament."""
+"""Tests for Swiss-system tournament."""
 
 import pytest
-from llm_qualitative_sort.tournament.multi_elimination import (
-    MultiEliminationTournament,
+from llm_qualitative_sort.tournament.swiss_system import (
+    SwissSystemTournament,
     Participant,
 )
 
@@ -25,11 +25,11 @@ class TestParticipant:
         assert p.is_eliminated(elimination_count=3) is False
 
 
-class TestMultiEliminationTournament:
-    """Tests for MultiEliminationTournament."""
+class TestSwissSystemTournament:
+    """Tests for SwissSystemTournament."""
 
     def test_create_tournament(self):
-        tournament = MultiEliminationTournament(
+        tournament = SwissSystemTournament(
             items=["a", "b", "c"],
             elimination_count=2
         )
@@ -37,7 +37,7 @@ class TestMultiEliminationTournament:
 
     def test_create_tournament_with_items(self):
         items = ["item1", "item2", "item3", "item4"]
-        tournament = MultiEliminationTournament(
+        tournament = SwissSystemTournament(
             items=items,
             elimination_count=2
         )
@@ -45,7 +45,7 @@ class TestMultiEliminationTournament:
 
     def test_get_active_participants(self):
         items = ["a", "b", "c"]
-        tournament = MultiEliminationTournament(
+        tournament = SwissSystemTournament(
             items=items,
             elimination_count=2
         )
@@ -54,7 +54,7 @@ class TestMultiEliminationTournament:
 
     def test_record_match_winner(self):
         items = ["a", "b"]
-        tournament = MultiEliminationTournament(
+        tournament = SwissSystemTournament(
             items=items,
             elimination_count=2
         )
@@ -71,7 +71,7 @@ class TestMultiEliminationTournament:
 
     def test_record_match_draw(self):
         items = ["a", "b"]
-        tournament = MultiEliminationTournament(
+        tournament = SwissSystemTournament(
             items=items,
             elimination_count=2
         )
@@ -87,7 +87,7 @@ class TestMultiEliminationTournament:
 
     def test_elimination(self):
         items = ["a", "b"]
-        tournament = MultiEliminationTournament(
+        tournament = SwissSystemTournament(
             items=items,
             elimination_count=2
         )
@@ -100,7 +100,7 @@ class TestMultiEliminationTournament:
 
     def test_get_next_matches(self):
         items = ["a", "b", "c", "d"]
-        tournament = MultiEliminationTournament(
+        tournament = SwissSystemTournament(
             items=items,
             elimination_count=2,
             seed=42
@@ -113,7 +113,7 @@ class TestMultiEliminationTournament:
 
     def test_is_complete(self):
         items = ["a", "b"]
-        tournament = MultiEliminationTournament(
+        tournament = SwissSystemTournament(
             items=items,
             elimination_count=1  # Single elimination
         )
@@ -125,7 +125,7 @@ class TestMultiEliminationTournament:
 
     def test_get_rankings(self):
         items = ["a", "b", "c"]
-        tournament = MultiEliminationTournament(
+        tournament = SwissSystemTournament(
             items=items,
             elimination_count=1,
             seed=42
@@ -147,8 +147,8 @@ class TestMultiEliminationTournament:
 
     def test_seed_reproducibility(self):
         items = ["a", "b", "c", "d"]
-        t1 = MultiEliminationTournament(items=items, elimination_count=2, seed=42)
-        t2 = MultiEliminationTournament(items=items, elimination_count=2, seed=42)
+        t1 = SwissSystemTournament(items=items, elimination_count=2, seed=42)
+        t2 = SwissSystemTournament(items=items, elimination_count=2, seed=42)
 
         matches1 = t1.get_next_matches()
         matches2 = t2.get_next_matches()

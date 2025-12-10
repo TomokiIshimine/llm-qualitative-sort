@@ -6,7 +6,7 @@
 
 **llm-qualitative-sort** - LLMを用いた定性的ソーティングパッケージ
 
-マルチイリミネーショントーナメント方式で、定量的に比較できない評価観点（文章の良さ、キャラクターの強さなど）に基づき、複数のテキストデータを順位付けします。
+スイス式トーナメント方式で、定量的に比較できない評価観点（文章の良さ、キャラクターの強さなど）に基づき、複数のテキストデータを順位付けします。
 
 ## 開発方針
 
@@ -51,7 +51,7 @@ src/llm_qualitative_sort/
 │   ├── google.py
 │   └── mock.py           # テスト用
 ├── tournament/           # トーナメント処理
-│   └── multi_elimination.py
+│   └── swiss_system.py
 └── cache/                # キャッシュ機能
     ├── base.py           # 抽象基底クラス
     ├── memory.py
@@ -123,7 +123,7 @@ python -m pytest tests/test_sorter.py::TestQualitativeSorterSort -v
 
 主な機能：
 - ペア比較機能（LLMによる2項目比較）
-- マルチイリミネーショントーナメント（N回負けで敗退）
+- スイス式トーナメント（N回負けで敗退）
 - 非同期処理（asyncio）
 - キャッシュ機能（メモリ/ファイル）
 - 進捗コールバック

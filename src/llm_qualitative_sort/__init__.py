@@ -1,4 +1,4 @@
-"""LLM Qualitative Sort - LLM-based qualitative sorting using multi-elimination tournament."""
+"""LLM Qualitative Sort - LLM-based qualitative sorting using Swiss-system tournament."""
 
 from llm_qualitative_sort.models import (
     ComparisonResult,
