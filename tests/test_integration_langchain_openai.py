@@ -62,22 +62,9 @@ class TestLangChainProviderWithOpenAI:
 
         assert result.winner == "A", f"Expected A, got {result.winner}. Reasoning: {result.reasoning}"
 
-    async def test_compare_with_custom_model(self):
-        """Test with custom model specification."""
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key:
-            pytest.skip("OPENAI_API_KEY not set")
-
-        from langchain_openai import ChatOpenAI
-
-        llm = ChatOpenAI(
-            model="gpt-4o-mini",
-            api_key=api_key,
-            temperature=0,
-        )
-        provider = LangChainProvider(llm=llm)
-
-        result = await provider.compare(
+    async def test_compare_subjective_criteria(self, langchain_provider):
+        """Test comparison with subjective criteria."""
+        result = await langchain_provider.compare(
             item_a="Python",
             item_b="JavaScript",
             criteria="Which programming language has a simpler syntax for beginners?"
