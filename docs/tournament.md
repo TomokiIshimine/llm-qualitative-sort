@@ -1,79 +1,81 @@
-# スイス式トーナメント
+# Swiss-System Tournament
 
-## 概要
+[日本語版](tournament.ja.md)
 
-スイス式トーナメントは、参加者が指定された回数（N回）負けると脱落する方式のトーナメントです。シングルイリミネーション（1回負けで脱落）と異なり、複数回の敗北を許容することで、より公平な順位付けが可能になります。
+## Overview
 
-## トーナメントの仕組み
+A Swiss-system tournament is a format where participants are eliminated after losing a specified number of times (N losses). Unlike single elimination (elimination after 1 loss), allowing multiple losses enables fairer ranking determination.
 
-### 基本ルール
+## How the Tournament Works
 
-1. 全参加者は0敗からスタート
-2. 各マッチで負けると敗北数が1増加
-3. 敗北数が `elimination_count` に達した参加者は脱落
-4. アクティブな参加者が1人以下になるまで継続
-5. 最終順位は勝利数で決定
+### Basic Rules
+
+1. All participants start with 0 losses
+2. Each match loss increments the loss count by 1
+3. Participants reaching `elimination_count` losses are eliminated
+4. Continue until 1 or fewer active participants remain
+5. Final rankings determined by win count
 
 ```mermaid
 flowchart TD
-    Start([トーナメント開始]) --> Init[全参加者: 0勝0敗]
-    Init --> Check{アクティブ<br/>参加者 > 1?}
+    Start([Tournament Start]) --> Init[All participants: 0 wins, 0 losses]
+    Init --> Check{Active<br/>participants > 1?}
 
-    Check -->|No| End([トーナメント終了])
-    Check -->|Yes| Bracket[敗北数でブラケット分け]
+    Check -->|No| End([Tournament End])
+    Check -->|Yes| Bracket[Group by loss count]
 
-    Bracket --> Pair[同ブラケット内でペアリング]
-    Pair --> Odd{端数あり?}
+    Bracket --> Pair[Pair within same bracket]
+    Pair --> Odd{Odd number?}
 
-    Odd -->|Yes| Cross[異ブラケットとマッチング]
-    Odd -->|No| Match[マッチ実行]
+    Odd -->|Yes| Cross[Match with different bracket]
+    Odd -->|No| Match[Execute matches]
 
     Cross --> Match
-    Match --> Record[結果記録]
-    Record --> Update[勝敗数更新]
-    Update --> Eliminate{N敗到達?}
+    Match --> Record[Record results]
+    Record --> Update[Update win/loss counts]
+    Update --> Eliminate{Reached N losses?}
 
-    Eliminate -->|Yes| Remove[脱落処理]
+    Eliminate -->|Yes| Remove[Eliminate]
     Eliminate -->|No| Check
 
     Remove --> Check
 ```
 
-### ブラケットシステム
+### Bracket System
 
-参加者は敗北数によってブラケット（グループ）に分類され、同じブラケット内で優先的にマッチングされます。
+Participants are classified into brackets (groups) based on loss count, with priority matching within the same bracket.
 
 ```mermaid
 graph TD
-    subgraph "ブラケット 0（0敗）"
-        A1[参加者A]
-        A2[参加者B]
-        A3[参加者C]
-        A4[参加者D]
+    subgraph "Bracket 0 (0 losses)"
+        A1[Participant A]
+        A2[Participant B]
+        A3[Participant C]
+        A4[Participant D]
     end
 
-    subgraph "ブラケット 1（1敗）"
-        B1[参加者E]
-        B2[参加者F]
-        B3[参加者G]
+    subgraph "Bracket 1 (1 loss)"
+        B1[Participant E]
+        B2[Participant F]
+        B3[Participant G]
     end
 
-    subgraph "ブラケット 2（2敗=脱落）"
-        C1[参加者H ×]
-        C2[参加者I ×]
+    subgraph "Bracket 2 (2 losses = Eliminated)"
+        C1[Participant H x]
+        C2[Participant I x]
     end
 
-    A1 -.->|対戦| A2
-    A3 -.->|対戦| A4
-    B1 -.->|対戦| B2
-    B3 -.->|異ブラケット| A1
+    A1 -.->|match| A2
+    A3 -.->|match| A4
+    B1 -.->|match| B2
+    B3 -.->|cross-bracket| A1
 ```
 
-## マッチの実行フロー
+## Match Execution Flow
 
-### 位置バイアスの軽減
+### Position Bias Mitigation
 
-LLMは提示順序によってバイアスが生じる可能性があるため、各マッチでは複数ラウンドを実行し、順序を交互に入れ替えます。
+Since LLMs may exhibit bias based on presentation order, each match executes multiple rounds with alternating order.
 
 ```mermaid
 sequenceDiagram
@@ -81,111 +83,111 @@ sequenceDiagram
     participant P as Provider
     participant C as Cache
 
-    Note over S: マッチ開始: A vs B
+    Note over S: Match Start: A vs B
 
     rect rgb(240, 248, 255)
-        Note over S: ラウンド1（順序: AB）
-        S->>C: キャッシュ確認 (A, B, "AB")
-        C-->>S: キャッシュミス
+        Note over S: Round 1 (Order: AB)
+        S->>C: Check cache (A, B, "AB")
+        C-->>S: Cache miss
         S->>P: compare(A, B, criteria)
         P-->>S: winner: "A"
-        S->>C: キャッシュ保存
+        S->>C: Save to cache
     end
 
     rect rgb(255, 248, 240)
-        Note over S: ラウンド2（順序: BA）
-        S->>C: キャッシュ確認 (B, A, "BA")
-        C-->>S: キャッシュミス
+        Note over S: Round 2 (Order: BA)
+        S->>C: Check cache (B, A, "BA")
+        C-->>S: Cache miss
         S->>P: compare(B, A, criteria)
-        P-->>S: winner: "B" → 変換後 "A"
-        S->>C: キャッシュ保存
+        P-->>S: winner: "B" -> converted to "A"
+        S->>C: Save to cache
     end
 
-    Note over S: 集計: A=2勝, B=0勝
-    Note over S: 勝者: A
+    Note over S: Tally: A=2 wins, B=0 wins
+    Note over S: Winner: A
 ```
 
-### 勝敗判定ロジック
+### Win/Loss Determination Logic
 
 ```mermaid
 flowchart TD
-    Start([マッチ開始]) --> Round1[ラウンド1: AB順序で比較]
-    Round1 --> Result1{結果}
+    Start([Match Start]) --> Round1[Round 1: Compare in AB order]
+    Round1 --> Result1{Result}
 
-    Result1 -->|A勝利| WinA1[A勝利数 +1]
-    Result1 -->|B勝利| WinB1[B勝利数 +1]
-    Result1 -->|エラー| Skip1[スキップ]
+    Result1 -->|A wins| WinA1[A win count +1]
+    Result1 -->|B wins| WinB1[B win count +1]
+    Result1 -->|Error| Skip1[Skip]
 
     WinA1 --> Round2
     WinB1 --> Round2
     Skip1 --> Round2
 
-    Round2[ラウンド2: BA順序で比較] --> Result2{結果}
+    Round2[Round 2: Compare in BA order] --> Result2{Result}
 
-    Result2 -->|A勝利| WinA2[A勝利数 +1]
-    Result2 -->|B勝利| WinB2[B勝利数 +1]
-    Result2 -->|エラー| Skip2[スキップ]
+    Result2 -->|A wins| WinA2[A win count +1]
+    Result2 -->|B wins| WinB2[B win count +1]
+    Result2 -->|Error| Skip2[Skip]
 
     WinA2 --> Judge
     WinB2 --> Judge
     Skip2 --> Judge
 
-    Judge{勝敗判定} --> |A勝利数 > B勝利数| WinnerA[勝者: A]
-    Judge --> |B勝利数 > A勝利数| WinnerB[勝者: B]
-    Judge --> |同数| Draw[引き分け: None]
+    Judge{Determine Winner} --> |A wins > B wins| WinnerA[Winner: A]
+    Judge --> |B wins > A wins| WinnerB[Winner: B]
+    Judge --> |Tied| Draw[Draw: None]
 
-    WinnerA --> End([マッチ終了])
+    WinnerA --> End([Match End])
     WinnerB --> End
     Draw --> End
 ```
 
-## トーナメント進行の例
+## Tournament Progression Example
 
-### 4アイテム、elimination_count=2 の場合
+### 4 Items, elimination_count=2
 
 ```mermaid
 graph TB
-    subgraph "ラウンド1"
-        M1[A vs B] --> R1[A勝利]
-        M2[C vs D] --> R2[C勝利]
+    subgraph "Round 1"
+        M1[A vs B] --> R1[A wins]
+        M2[C vs D] --> R2[C wins]
     end
 
-    subgraph "状態1"
-        S1A[A: 1勝0敗]
-        S1B[B: 0勝1敗]
-        S1C[C: 1勝0敗]
-        S1D[D: 0勝1敗]
+    subgraph "State 1"
+        S1A[A: 1W 0L]
+        S1B[B: 0W 1L]
+        S1C[C: 1W 0L]
+        S1D[D: 0W 1L]
     end
 
-    subgraph "ラウンド2"
-        M3[A vs C<br/>0敗同士] --> R3[A勝利]
-        M4[B vs D<br/>1敗同士] --> R4[D勝利]
+    subgraph "Round 2"
+        M3[A vs C<br/>0 losses each] --> R3[A wins]
+        M4[B vs D<br/>1 loss each] --> R4[D wins]
     end
 
-    subgraph "状態2"
-        S2A[A: 2勝0敗]
-        S2B["B: 0勝2敗 ×"]
-        S2C[C: 1勝1敗]
-        S2D[D: 1勝1敗]
+    subgraph "State 2"
+        S2A[A: 2W 0L]
+        S2B["B: 0W 2L x"]
+        S2C[C: 1W 1L]
+        S2D[D: 1W 1L]
     end
 
-    subgraph "ラウンド3"
-        M5[C vs D<br/>1敗同士] --> R5[C勝利]
+    subgraph "Round 3"
+        M5[C vs D<br/>1 loss each] --> R5[C wins]
     end
 
-    subgraph "状態3"
-        S3A[A: 2勝0敗]
-        S3C[C: 2勝1敗]
-        S3D["D: 1勝2敗 ×"]
+    subgraph "State 3"
+        S3A[A: 2W 0L]
+        S3C[C: 2W 1L]
+        S3D["D: 1W 2L x"]
     end
 
-    subgraph "ラウンド4"
-        M6[A vs C] --> R6[A勝利]
+    subgraph "Round 4"
+        M6[A vs C] --> R6[A wins]
     end
 
-    subgraph "最終状態"
-        FA[A: 3勝0敗]
-        FC["C: 2勝2敗 ×"]
+    subgraph "Final State"
+        FA[A: 3W 0L]
+        FC["C: 2W 2L x"]
     end
 
     R1 --> S1A
@@ -217,71 +219,71 @@ graph TB
     R6 --> FC
 ```
 
-### 最終順位（勝利数順）
+### Final Rankings (by Win Count)
 
-| 順位 | アイテム | 勝利数 | 敗北数 |
-|------|----------|--------|--------|
-| 1位  | A        | 3      | 0      |
-| 2位  | C        | 2      | 2      |
-| 3位  | D        | 1      | 2      |
-| 4位  | B        | 0      | 2      |
+| Rank | Item | Wins | Losses |
+|------|------|------|--------|
+| 1st  | A    | 3    | 0      |
+| 2nd  | C    | 2    | 2      |
+| 3rd  | D    | 1    | 2      |
+| 4th  | B    | 0    | 2      |
 
-## キャッシュキーの構造
+## Cache Key Structure
 
-キャッシュは比較の再利用を可能にしますが、順序バイアスを考慮して順序情報もキーに含めます。
+Caching enables reuse of comparisons, but order information is included in the key to account for position bias.
 
 ```mermaid
 flowchart LR
-    subgraph "キャッシュキー生成"
+    subgraph "Cache Key Generation"
         A[item_a] --> H
         B[item_b] --> H
         C[criteria] --> H
         O[order: AB/BA] --> H
-        H[SHA256ハッシュ] --> K[キャッシュキー]
+        H[SHA256 Hash] --> K[Cache Key]
     end
 ```
 
-**重要**: `compare(A, B)` と `compare(B, A)` は異なるキャッシュキーを持ちます。これにより、LLMの位置バイアスがキャッシュに正しく反映されます。
+**Important**: `compare(A, B)` and `compare(B, A)` have different cache keys. This ensures LLM position bias is correctly reflected in the cache.
 
-## 設定パラメータ
+## Configuration Parameters
 
-| パラメータ | デフォルト | 説明 |
-|-----------|-----------|------|
-| `elimination_count` | 2 | 脱落に必要な敗北数 |
-| `comparison_rounds` | 2 | 1マッチあたりのラウンド数（偶数推奨） |
-| `seed` | None | 乱数シード（再現性確保用） |
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `elimination_count` | 2 | Number of losses required for elimination |
+| `comparison_rounds` | 2 | Number of rounds per match (even number recommended) |
+| `seed` | None | Random seed (for reproducibility) |
 
-## マッチング戦略
+## Matching Strategy
 
 ```mermaid
 flowchart TD
-    Start([マッチング開始]) --> Group[敗北数でグループ化]
-    Group --> Sort[敗北数昇順でソート]
-    Sort --> Loop{全ブラケット処理?}
+    Start([Matching Start]) --> Group[Group by loss count]
+    Group --> Sort[Sort by loss count ascending]
+    Sort --> Loop{All brackets processed?}
 
-    Loop -->|No| Shuffle[ブラケット内シャッフル]
-    Shuffle --> Pair[2人ずつペアリング]
-    Pair --> Odd{端数あり?}
+    Loop -->|No| Shuffle[Shuffle within bracket]
+    Shuffle --> Pair[Pair in twos]
+    Pair --> Odd{Odd number?}
 
-    Odd -->|Yes| Save[次ブラケットへ繰り越し]
-    Odd -->|No| Next[次のブラケットへ]
+    Odd -->|Yes| Save[Carry over to next bracket]
+    Odd -->|No| Next[Next bracket]
 
     Save --> Next
     Next --> Loop
 
-    Loop -->|Yes| Return[マッチリスト返却]
-    Return --> End([マッチング終了])
+    Loop -->|Yes| Return[Return match list]
+    Return --> End([Matching End])
 ```
 
-### マッチング例
+### Matching Example
 
-アクティブ参加者: A(0敗), B(0敗), C(0敗), D(1敗), E(1敗)
+Active participants: A(0 losses), B(0 losses), C(0 losses), D(1 loss), E(1 loss)
 
-1. ブラケット0（0敗）: [A, B, C] → シャッフル → [B, A, C]
-   - マッチ1: B vs A
-   - 端数: C → 繰り越し
-2. ブラケット1（1敗）: [D, E] + [C] → シャッフル → [E, C, D]
-   - マッチ2: E vs C
-   - 端数: D（対戦相手なし、次ラウンドへ）
+1. Bracket 0 (0 losses): [A, B, C] -> Shuffle -> [B, A, C]
+   - Match 1: B vs A
+   - Odd one out: C -> Carry over
+2. Bracket 1 (1 loss): [D, E] + [C] -> Shuffle -> [E, C, D]
+   - Match 2: E vs C
+   - Odd one out: D (no opponent, wait for next round)
 
-結果: [(B, A), (E, C)]
+Result: [(B, A), (E, C)]

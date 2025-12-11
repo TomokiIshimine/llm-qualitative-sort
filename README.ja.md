@@ -333,6 +333,39 @@ python -m pytest tests/ --cov=src/llm_qualitative_sort
 2. **Green**: テストをパスする最小限のコードを実装
 3. **Refactor**: コードを改善（テストは常にパス状態を維持）
 
+## ドキュメント
+
+| ドキュメント | 説明 |
+|-------------|------|
+| [アーキテクチャ](docs/architecture.ja.md) | システムアーキテクチャと設計原則 |
+| [スイス式トーナメント](docs/tournament.ja.md) | トーナメントアルゴリズムとマッチング戦略 |
+| [APIリファレンス](docs/api-reference.ja.md) | 詳細なAPIドキュメントと使用例 |
+
+英語版も利用可能です（`*.md`）。
+
+## デプロイ
+
+### PyPIへの公開
+
+このパッケージはGitHub Actionsによる自動PyPI公開を使用しています（Trusted Publishing、APIトークン不要）。
+
+**リリース手順:**
+
+1. `pyproject.toml`のバージョンを更新
+2. バージョンタグを作成してプッシュ:
+   ```bash
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
+3. GitHub Actionsが自動的に:
+   - Python 3.10, 3.11, 3.12でテストを実行
+   - パッケージをビルド
+   - PyPIに公開
+
+**必要な設定:**
+- PyPIプロジェクト設定でTrusted Publishingを設定
+- GitHubリポジトリで`pypi`環境を設定
+
 ## 必要要件
 
 - Python >= 3.10
