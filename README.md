@@ -333,6 +333,39 @@ This project follows Test-Driven Development (TDD):
 2. **Green**: Implement minimal code to pass the test
 3. **Refactor**: Improve code (keeping tests passing)
 
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Architecture](docs/architecture.md) | System architecture and design principles |
+| [Swiss-System Tournament](docs/tournament.md) | Tournament algorithm and matching strategy |
+| [API Reference](docs/api-reference.md) | Detailed API documentation with examples |
+
+Japanese versions are also available (`*.ja.md`).
+
+## Deployment
+
+### Publishing to PyPI
+
+This package uses GitHub Actions for automated PyPI publishing with trusted publishing (no API tokens required).
+
+**Release Process:**
+
+1. Update version in `pyproject.toml`
+2. Create and push a version tag:
+   ```bash
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
+3. GitHub Actions will automatically:
+   - Run tests on Python 3.10, 3.11, 3.12
+   - Build the package
+   - Publish to PyPI
+
+**Requirements:**
+- Configure PyPI trusted publishing in your PyPI project settings
+- Set up the `pypi` environment in your GitHub repository
+
 ## Requirements
 
 - Python >= 3.10

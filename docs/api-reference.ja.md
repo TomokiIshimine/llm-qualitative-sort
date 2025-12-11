@@ -1,8 +1,8 @@
-# API Reference
+# API リファレンス
 
-[日本語版](api-reference.ja.md)
+[English](api-reference.md)
 
-## Quick Start
+## クイックスタート
 
 ```python
 import asyncio
@@ -15,35 +15,35 @@ from llm_qualitative_sort import (
 )
 
 async def main():
-    # Configure LLM provider
+    # LLMプロバイダーの設定
     model = ChatOpenAI(model="gpt-4o-mini")
     provider = LangChainProvider(model)
 
-    # Create sorter
+    # ソーターの作成
     sorter = QualitativeSorter(
         provider=provider,
-        criteria="Text quality and readability",
+        criteria="文章の品質と読みやすさ",
         elimination_count=2,
         cache=MemoryCache(),
     )
 
-    # Execute sorting
-    items = ["Text A", "Text B", "Text C", "Text D"]
+    # ソート実行
+    items = ["文章A", "文章B", "文章C", "文章D"]
     result = await sorter.sort(items)
 
-    # Display results
+    # 結果表示
     ranking = to_ranking(result)
     for entry in ranking.entries:
-        print(f"Rank {entry.rank}: {entry.item} ({entry.wins} wins)")
+        print(f"{entry.rank}位: {entry.item} ({entry.wins}勝)")
 
 asyncio.run(main())
 ```
 
-## Core Classes
+## コアクラス
 
 ### QualitativeSorter
 
-Main sorter class.
+メインのソータークラス。
 
 ```python
 class QualitativeSorter:
@@ -62,31 +62,31 @@ class QualitativeSorter:
     async def sort(self, items: list[str]) -> SortResult: ...
 ```
 
-#### Parameters
+#### パラメータ
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `provider` | `LLMProvider` | Required | LLM provider |
-| `criteria` | `str` | Required | Evaluation criteria |
-| `elimination_count` | `int` | 2 | Number of losses required for elimination |
-| `comparison_rounds` | `int` | 2 | Number of rounds per match |
-| `max_concurrent_requests` | `int` | 10 | Maximum concurrent requests |
-| `cache` | `Cache \| None` | None | Cache instance |
-| `on_progress` | `Callable` | None | Progress callback |
-| `seed` | `int \| None` | None | Random seed |
+| パラメータ | 型 | デフォルト | 説明 |
+|-----------|------|-----------|------|
+| `provider` | `LLMProvider` | 必須 | LLMプロバイダー |
+| `criteria` | `str` | 必須 | 評価基準 |
+| `elimination_count` | `int` | 2 | 脱落に必要な敗北数 |
+| `comparison_rounds` | `int` | 2 | 1マッチあたりのラウンド数 |
+| `max_concurrent_requests` | `int` | 10 | 最大同時リクエスト数 |
+| `cache` | `Cache \| None` | None | キャッシュインスタンス |
+| `on_progress` | `Callable` | None | 進捗コールバック |
+| `seed` | `int \| None` | None | 乱数シード |
 
-## Data Models
+## データモデル
 
 ### SortResult
 
-Data class for sort results.
+ソート結果を格納するデータクラス。
 
 ```python
 @dataclass
 class SortResult:
-    rankings: list[tuple[int, list[str]]]  # [(rank, [items]), ...]
-    match_history: list[MatchResult]        # Match history
-    statistics: Statistics                   # Statistics
+    rankings: list[tuple[int, list[str]]]  # [(順位, [アイテム]), ...]
+    match_history: list[MatchResult]        # マッチ履歴
+    statistics: Statistics                   # 統計情報
 ```
 
 ```mermaid
@@ -125,19 +125,19 @@ classDiagram
 
 ### ComparisonResult
 
-Single comparison result.
+単一の比較結果。
 
 ```python
 @dataclass
 class ComparisonResult:
-    winner: str | None  # "A", "B", or None (on error)
-    reasoning: str      # Judgment reasoning
-    raw_response: dict  # Raw LLM response
+    winner: str | None  # "A", "B", or None (エラー時)
+    reasoning: str      # 判定理由
+    raw_response: dict  # 生のLLMレスポンス
 ```
 
-## LLM Providers
+## LLMプロバイダー
 
-### LLMProvider (Base Class)
+### LLMProvider（基底クラス）
 
 ```python
 class LLMProvider(ABC):
@@ -152,22 +152,22 @@ class LLMProvider(ABC):
 
 ### LangChainProvider
 
-Provider using LangChain's `BaseChatModel`.
+LangChainの`BaseChatModel`を使用するプロバイダー。
 
 ```python
 class LangChainProvider(LLMProvider):
     def __init__(self, model: BaseChatModel) -> None: ...
 ```
 
-#### Supported Models
+#### 対応モデル
 
 ```mermaid
 graph LR
-    subgraph "LangChain Supported Models"
+    subgraph "LangChain対応モデル"
         OpenAI[OpenAI<br/>GPT-4, GPT-4o]
         Anthropic[Anthropic<br/>Claude]
         Google[Google<br/>Gemini]
-        Other[Others<br/>with_structured_output support]
+        Other[その他<br/>with_structured_output対応]
     end
 
     LCP[LangChainProvider] --> OpenAI
@@ -176,7 +176,7 @@ graph LR
     LCP --> Other
 ```
 
-#### Usage Examples
+#### 使用例
 
 ```python
 # OpenAI
@@ -185,7 +185,7 @@ provider = LangChainProvider(ChatOpenAI(model="gpt-4o"))
 
 # Anthropic
 from langchain_anthropic import ChatAnthropic
-provider = LangChainProvider(ChatAnthropic(model="claude-sonnet-4-20250514"))
+provider = LangChainProvider(ChatAnthropic(model="claude-3-5-sonnet-20241022"))
 
 # Google
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -194,7 +194,7 @@ provider = LangChainProvider(ChatGoogleGenerativeAI(model="gemini-1.5-flash"))
 
 ### MockLLMProvider
 
-Mock provider for testing. Compares numeric strings.
+テスト用のモックプロバイダー。数値文字列を比較します。
 
 ```python
 class MockLLMProvider(LLMProvider):
@@ -205,9 +205,9 @@ class MockLLMProvider(LLMProvider):
     ) -> None: ...
 ```
 
-## Cache
+## キャッシュ
 
-### Cache (Base Class)
+### Cache（基底クラス）
 
 ```python
 class Cache(ABC):
@@ -233,7 +233,7 @@ class Cache(ABC):
 
 ### MemoryCache
 
-In-memory cache (session-limited).
+メモリ上のキャッシュ（セッション限定）。
 
 ```python
 class MemoryCache(Cache):
@@ -242,7 +242,7 @@ class MemoryCache(Cache):
 
 ### FileCache
 
-File-based persistent cache.
+ファイルベースの永続キャッシュ。
 
 ```python
 class FileCache(Cache):
@@ -251,32 +251,32 @@ class FileCache(Cache):
 
 ```mermaid
 flowchart LR
-    subgraph "Cache Selection"
-        MC[MemoryCache<br/>Fast, Temporary]
-        FC[FileCache<br/>Persistent, Reusable]
+    subgraph "キャッシュ選択"
+        MC[MemoryCache<br/>高速・一時的]
+        FC[FileCache<br/>永続・再利用可能]
     end
 
-    Dev[Development/Testing] --> MC
-    Prod[Production/Long-running] --> FC
+    Dev[開発・テスト] --> MC
+    Prod[本番・長期実行] --> FC
 ```
 
-## Output Formatters
+## 出力フォーマッター
 
 ### to_sorting
 
-Returns a simple sorted list.
+シンプルなソート済みリストを返します。
 
 ```python
 def to_sorting(result: SortResult) -> SortingOutput: ...
 
 @dataclass
 class SortingOutput:
-    items: list[str]  # Sorted items
+    items: list[str]  # ソート済みアイテム
 ```
 
 ### to_ranking
 
-Returns detailed ranking information.
+詳細なランキング情報を返します。
 
 ```python
 def to_ranking(result: SortResult) -> RankingOutput: ...
@@ -296,7 +296,7 @@ class RankingOutput:
 
 ### to_percentile
 
-Returns percentile and tier classification.
+パーセンタイルとティア分類を返します。
 
 ```python
 def to_percentile(
@@ -323,30 +323,30 @@ graph TD
     SR --> TR[to_ranking]
     SR --> TP[to_percentile]
 
-    TS --> SO[SortingOutput<br/>Simple List]
-    TR --> RO[RankingOutput<br/>Rank, Win Count]
-    TP --> PO[PercentileOutput<br/>Percentile, Tier]
+    TS --> SO[SortingOutput<br/>シンプルなリスト]
+    TR --> RO[RankingOutput<br/>順位・勝利数]
+    TP --> PO[PercentileOutput<br/>パーセンタイル・ティア]
 ```
 
-#### Default Tier Thresholds
+#### デフォルトティア閾値
 
-| Tier | Percentile Range |
-|------|------------------|
-| S    | 90-100           |
-| A    | 70-89            |
-| B    | 50-69            |
-| C    | 30-49            |
-| D    | 0-29             |
+| ティア | パーセンタイル範囲 |
+|--------|-------------------|
+| S      | 90-100            |
+| A      | 70-89             |
+| B      | 50-69             |
+| C      | 30-49             |
+| D      | 0-29              |
 
-## Event System
+## イベントシステム
 
 ### EventType
 
 ```python
 class EventType(Enum):
-    MATCH_START = "match_start"  # Match started
-    MATCH_END = "match_end"      # Match ended
-    ROUND_END = "round_end"      # Round ended
+    MATCH_START = "match_start"  # マッチ開始
+    MATCH_END = "match_end"      # マッチ終了
+    ROUND_END = "round_end"      # ラウンド終了
 ```
 
 ### ProgressEvent
@@ -356,12 +356,12 @@ class EventType(Enum):
 class ProgressEvent:
     type: EventType
     message: str
-    completed: int  # Completed match count
-    total: int      # Estimated total matches
+    completed: int  # 完了マッチ数
+    total: int      # 推定総マッチ数
     data: dict | None
 ```
 
-### Usage Example
+### 使用例
 
 ```python
 def on_progress(event: ProgressEvent):
@@ -369,8 +369,8 @@ def on_progress(event: ProgressEvent):
     print(f"[{pct:.1f}%] {event.message}")
 
     if event.type == EventType.MATCH_END:
-        winner = event.data.get("winner", "Draw")
-        print(f"  -> Winner: {winner}")
+        winner = event.data.get("winner", "引き分け")
+        print(f"  → 勝者: {winner}")
 
 sorter = QualitativeSorter(..., on_progress=on_progress)
 ```
@@ -381,31 +381,31 @@ sequenceDiagram
     participant U as User Callback
 
     S->>U: MATCH_START<br/>item_a, item_b
-    Note over S: Match in progress...
+    Note over S: マッチ実行中...
     S->>U: MATCH_END<br/>item_a, item_b, winner
 
     S->>U: MATCH_START
-    Note over S: Match in progress...
+    Note over S: マッチ実行中...
     S->>U: MATCH_END
 
-    S->>U: ROUND_END<br/>Round complete
+    S->>U: ROUND_END<br/>ラウンド完了
 ```
 
-## Metrics
+## メトリクス
 
 ### AccuracyMetrics
 
 ```python
 @dataclass
 class AccuracyMetrics:
-    kendall_tau: float        # Kendall's tau coefficient (-1 to 1)
-    top_10_accuracy: float    # Top 10 accuracy
-    top_50_accuracy: float    # Top 50 accuracy
-    top_100_accuracy: float   # Top 100 accuracy
-    correct_pair_ratio: float # Correct pair ratio
+    kendall_tau: float        # ケンドールのタウ係数 (-1〜1)
+    top_10_accuracy: float    # Top10精度
+    top_50_accuracy: float    # Top50精度
+    top_100_accuracy: float   # Top100精度
+    correct_pair_ratio: float # 正しいペア比率
 ```
 
-### Calculation Functions
+### 計算関数
 
 ```python
 def calculate_kendall_tau(actual: list[str], expected: list[str]) -> float: ...
@@ -414,7 +414,7 @@ def calculate_correct_pair_ratio(actual: list[str], expected: list[str]) -> floa
 def calculate_all_metrics(actual: list[str], expected: list[str]) -> AccuracyMetrics: ...
 ```
 
-### Usage Example
+### 使用例
 
 ```python
 from llm_qualitative_sort import calculate_all_metrics, to_sorting
@@ -422,7 +422,7 @@ from llm_qualitative_sort import calculate_all_metrics, to_sorting
 result = await sorter.sort(items)
 sorted_items = to_sorting(result).items
 
-# If you have expected ordering
+# 期待される順序がある場合
 expected = ["best", "good", "ok", "bad"]
 metrics = calculate_all_metrics(sorted_items, expected)
 
@@ -430,7 +430,7 @@ print(f"Kendall's Tau: {metrics.kendall_tau:.3f}")
 print(f"Correct Pair Ratio: {metrics.correct_pair_ratio:.1%}")
 ```
 
-## Complete Usage Example
+## 完全な使用例
 
 ```python
 import asyncio
@@ -450,14 +450,14 @@ def progress_handler(event: ProgressEvent):
         print(f"[{event.completed}/{event.total}] {event.message}")
 
 async def main():
-    # Configuration
+    # 設定
     model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     provider = LangChainProvider(model)
     cache = FileCache("./cache")
 
     sorter = QualitativeSorter(
         provider=provider,
-        criteria="Character strength (comprehensive evaluation of combat ability, special powers, and strategy)",
+        criteria="キャラクターの強さ（戦闘能力、特殊能力、知略を総合的に評価）",
         elimination_count=3,
         comparison_rounds=2,
         max_concurrent_requests=5,
@@ -466,37 +466,37 @@ async def main():
         seed=42,
     )
 
-    # Items to sort
+    # ソート対象
     characters = [
-        "Goku (Dragon Ball)",
-        "Luffy (One Piece)",
-        "Naruto (Naruto)",
-        "Ichigo (Bleach)",
+        "孫悟空（ドラゴンボール）",
+        "ルフィ（ワンピース）",
+        "ナルト（NARUTO）",
+        "一護（BLEACH）",
     ]
 
-    # Execute
+    # 実行
     result = await sorter.sort(characters)
 
-    # Ranking output
-    print("\n=== Rankings ===")
+    # ランキング出力
+    print("\n=== ランキング ===")
     ranking = to_ranking(result)
     for entry in ranking.entries:
-        tie = " (tied)" if entry.is_tied else ""
-        print(f"Rank {entry.rank}: {entry.item} - {entry.wins} wins{tie}")
+        tie = "（同率）" if entry.is_tied else ""
+        print(f"{entry.rank}位: {entry.item} - {entry.wins}勝{tie}")
 
-    # Percentile output
-    print("\n=== Tier Classification ===")
+    # パーセンタイル出力
+    print("\n=== ティア分類 ===")
     percentile = to_percentile(result)
     for entry in percentile.entries:
         print(f"[{entry.tier}] {entry.item} ({entry.percentile:.1f}%)")
 
-    # Statistics
-    print(f"\n=== Statistics ===")
+    # 統計
+    print(f"\n=== 統計 ===")
     stats = result.statistics
-    print(f"Total matches: {stats.total_matches}")
-    print(f"API calls: {stats.total_api_calls}")
-    print(f"Cache hits: {stats.cache_hits}")
-    print(f"Elapsed time: {stats.elapsed_time:.2f}s")
+    print(f"総マッチ数: {stats.total_matches}")
+    print(f"API呼び出し: {stats.total_api_calls}")
+    print(f"キャッシュヒット: {stats.cache_hits}")
+    print(f"実行時間: {stats.elapsed_time:.2f}秒")
 
 asyncio.run(main())
 ```

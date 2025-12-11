@@ -1,42 +1,44 @@
-# LLM Qualitative Sort - アーキテクチャドキュメント
+# LLM Qualitative Sort - Architecture Document
 
-## 概要
+[日本語版](architecture.ja.md)
 
-**llm-qualitative-sort** は、LLM（大規模言語モデル）を用いて定性的な基準でテキストデータをソートするPythonパッケージです。
+## Overview
 
-スイス式トーナメント方式を採用し、「文章の良さ」「キャラクターの強さ」など、定量的に比較できない評価観点に基づいて複数の項目を順位付けします。
+**llm-qualitative-sort** is a Python package that sorts text data based on qualitative criteria using LLMs (Large Language Models).
 
-## システムアーキテクチャ
+Using a Swiss-system tournament format, it ranks multiple items based on evaluation criteria that cannot be quantitatively compared, such as "writing quality" or "character strength."
+
+## System Architecture
 
 ```mermaid
 graph TB
     subgraph "User Interface"
-        User[ユーザー]
+        User[User]
     end
 
     subgraph "Core Layer"
-        Sorter[QualitativeSorter<br/>メインオーケストレーター]
+        Sorter[QualitativeSorter<br/>Main Orchestrator]
     end
 
     subgraph "Tournament Layer"
-        Tournament[SwissSystemTournament<br/>トーナメント管理]
-        Participant[Participant<br/>参加者管理]
+        Tournament[SwissSystemTournament<br/>Tournament Management]
+        Participant[Participant<br/>Participant Management]
     end
 
     subgraph "Provider Layer"
-        Provider[LLMProvider<br/>抽象基底クラス]
-        LangChain[LangChainProvider<br/>LangChain統合]
-        Mock[MockLLMProvider<br/>テスト用]
+        Provider[LLMProvider<br/>Abstract Base Class]
+        LangChain[LangChainProvider<br/>LangChain Integration]
+        Mock[MockLLMProvider<br/>For Testing]
     end
 
     subgraph "Cache Layer"
-        Cache[Cache<br/>抽象基底クラス]
-        Memory[MemoryCache<br/>メモリキャッシュ]
-        File[FileCache<br/>ファイルキャッシュ]
+        Cache[Cache<br/>Abstract Base Class]
+        Memory[MemoryCache<br/>Memory Cache]
+        File[FileCache<br/>File Cache]
     end
 
     subgraph "Output Layer"
-        Formatters[Formatters<br/>出力フォーマッター]
+        Formatters[Formatters<br/>Output Formatters]
         Sorting[SortingOutput]
         Ranking[RankingOutput]
         Percentile[PercentileOutput]
@@ -57,7 +59,7 @@ graph TB
     Formatters --> Percentile
 ```
 
-## コンポーネント構成
+## Component Structure
 
 ```mermaid
 classDiagram
@@ -117,99 +119,99 @@ classDiagram
     LangChainProvider --|> LLMProvider
 ```
 
-## データフロー
+## Data Flow
 
 ```mermaid
 flowchart TD
-    Start([開始]) --> Input[アイテムリスト入力]
-    Input --> Validate{バリデーション}
-    Validate -->|失敗| Error[エラー返却]
-    Validate -->|成功| Init[トーナメント初期化]
+    Start([Start]) --> Input[Input item list]
+    Input --> Validate{Validation}
+    Validate -->|Failure| Error[Return error]
+    Validate -->|Success| Init[Initialize tournament]
 
-    Init --> CheckComplete{トーナメント<br/>完了？}
-    CheckComplete -->|Yes| Compile[結果コンパイル]
-    CheckComplete -->|No| GetMatches[次のマッチ取得]
+    Init --> CheckComplete{Tournament<br/>complete?}
+    CheckComplete -->|Yes| Compile[Compile results]
+    CheckComplete -->|No| GetMatches[Get next matches]
 
-    GetMatches --> RunMatches[マッチ並列実行]
-    RunMatches --> RecordResults[結果記録]
-    RecordResults --> EmitProgress[進捗イベント発行]
+    GetMatches --> RunMatches[Execute matches in parallel]
+    RunMatches --> RecordResults[Record results]
+    RecordResults --> EmitProgress[Emit progress event]
     EmitProgress --> CheckComplete
 
-    Compile --> CreateResult[SortResult作成]
-    CreateResult --> FormatOutput{出力形式}
+    Compile --> CreateResult[Create SortResult]
+    CreateResult --> FormatOutput{Output format}
 
     FormatOutput -->|Sorting| SortOut[SortingOutput]
     FormatOutput -->|Ranking| RankOut[RankingOutput]
     FormatOutput -->|Percentile| PercOut[PercentileOutput]
 
-    SortOut --> End([終了])
+    SortOut --> End([End])
     RankOut --> End
     PercOut --> End
     Error --> End
 ```
 
-## 主要コンポーネント
+## Key Components
 
 ### 1. QualitativeSorter
 
-メインオーケストレータークラス。すべてのコンポーネントを統合し、ソート処理全体を制御します。
+Main orchestrator class. Integrates all components and controls the entire sorting process.
 
-**責務:**
-- アイテムのバリデーション
-- トーナメントの実行制御
-- 並行リクエストの制限（Semaphore）
-- 進捗イベントの発行
-- 結果の集計
+**Responsibilities:**
+- Item validation
+- Tournament execution control
+- Concurrent request limiting (Semaphore)
+- Progress event emission
+- Result aggregation
 
 ### 2. SwissSystemTournament
 
-スイス式トーナメントのロジックを実装します。
+Implements Swiss-system tournament logic.
 
-**責務:**
-- 参加者の管理（勝敗記録）
-- ブラケット（敗北数グループ）によるマッチング
-- 対戦履歴の追跡
-- 最終順位の算出
+**Responsibilities:**
+- Participant management (win/loss tracking)
+- Bracket (loss count group) matching
+- Match history tracking
+- Final ranking calculation
 
 ### 3. LLMProvider
 
-LLMとの通信を抽象化したインターフェース。
+Interface abstracting LLM communication.
 
-**実装:**
-- `LangChainProvider`: LangChainを使用した汎用プロバイダー
-- `MockLLMProvider`: テスト用のモックプロバイダー
+**Implementations:**
+- `LangChainProvider`: Generic provider using LangChain
+- `MockLLMProvider`: Mock provider for testing
 
 ### 4. Cache
 
-比較結果をキャッシュし、重複したLLM呼び出しを防ぎます。
+Caches comparison results to prevent redundant LLM calls.
 
-**実装:**
-- `MemoryCache`: メモリ上のキャッシュ（セッション限定）
-- `FileCache`: ファイルベースの永続キャッシュ
+**Implementations:**
+- `MemoryCache`: In-memory cache (session-limited)
+- `FileCache`: File-based persistent cache
 
-## 設計原則
+## Design Principles
 
-### 依存性注入
+### Dependency Injection
 
 ```python
-# プロバイダーとキャッシュは外部から注入
+# Provider and cache are injected externally
 sorter = QualitativeSorter(
-    provider=LangChainProvider(model),  # 注入
-    criteria="文章の品質",
-    cache=FileCache("./cache"),          # 注入
+    provider=LangChainProvider(model),  # Injected
+    criteria="Text quality",
+    cache=FileCache("./cache"),          # Injected
 )
 ```
 
-### 非同期処理
+### Async Processing
 
-すべてのLLM呼び出しは `async/await` を使用し、`asyncio.Semaphore` で同時リクエスト数を制御します。
+All LLM calls use `async/await`, with `asyncio.Semaphore` controlling concurrent request count.
 
 ```python
 async with self._semaphore:
     result = await self._provider.compare(first, second, self._criteria)
 ```
 
-### イベント駆動の進捗報告
+### Event-Driven Progress Reporting
 
 ```python
 def on_progress(event: ProgressEvent):
@@ -218,25 +220,25 @@ def on_progress(event: ProgressEvent):
 sorter = QualitativeSorter(..., on_progress=on_progress)
 ```
 
-## ファイル構成
+## File Structure
 
 ```
 src/llm_qualitative_sort/
-├── __init__.py              # パブリックAPI
-├── models.py                # データ構造
-├── events.py                # イベントシステム
-├── sorter.py                # メインクラス
-├── metrics.py               # 評価メトリクス
-├── providers/               # LLMプロバイダー
-│   ├── base.py             # 抽象基底クラス
-│   ├── langchain.py        # LangChain統合
-│   ├── mock.py             # テスト用
-│   └── errors.py           # エラーハンドリング
-├── tournament/              # トーナメント処理
+├── __init__.py              # Public API
+├── models.py                # Data structures
+├── events.py                # Event system
+├── sorter.py                # Main class
+├── metrics.py               # Evaluation metrics
+├── providers/               # LLM providers
+│   ├── base.py             # Abstract base class
+│   ├── langchain.py        # LangChain integration
+│   ├── mock.py             # For testing
+│   └── errors.py           # Error handling
+├── tournament/              # Tournament processing
 │   └── swiss_system.py
-├── cache/                   # キャッシュ機能
+├── cache/                   # Cache functionality
 │   └── __init__.py
-└── output/                  # 出力フォーマット
+└── output/                  # Output formatting
     ├── models.py
     ├── formatters.py
     └── calculators.py
